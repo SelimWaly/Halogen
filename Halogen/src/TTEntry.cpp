@@ -2,11 +2,7 @@
 
 TTEntry::TTEntry()
 {
-	key = EMPTY;
-	score = -1;
-	depth = -1;
-	cutoff = EntryType::EMPTY_ENTRY;
-	halfmove = -1;
+	Reset();
 }
 
 TTEntry::TTEntry(Move best, uint64_t ZobristKey, int Score, int Depth, int currentTurnCount, int distanceFromRoot, EntryType Cutoff)
@@ -14,17 +10,13 @@ TTEntry::TTEntry(Move best, uint64_t ZobristKey, int Score, int Depth, int curre
 	assert(Score < SHRT_MAX && Score > SHRT_MIN);
 	assert(Depth < CHAR_MAX && Depth > CHAR_MIN);
 
-	key = ZobristKey;
+	lowerkey = ZobristKey & 0xffff;	
+	higherkey = (ZobristKey >> 16) & 0xffff;
 	bestMove = best;
 	score = static_cast<short>(Score);
 	depth = static_cast<char>(Depth);
 	cutoff = Cutoff;
 	SetHalfMove(currentTurnCount, distanceFromRoot);
-}
-
-
-TTEntry::~TTEntry()
-{
 }
 
 void TTEntry::MateScoreAdjustment(int distanceFromRoot)
@@ -38,7 +30,8 @@ void TTEntry::MateScoreAdjustment(int distanceFromRoot)
 void TTEntry::Reset()
 {
 	bestMove.Reset();
-	key = EMPTY;
+	lowerkey = 0;
+	higherkey = 0;
 	score = -1;
 	depth = -1;
 	cutoff = EntryType::EMPTY_ENTRY;
@@ -47,8 +40,6 @@ void TTEntry::Reset()
 
 void TTBucket::Reset()
 {
-	entry[0].Reset();
-	entry[1].Reset();
-	entry[2].Reset();
-	entry[3].Reset();
+	for (auto& val : entry)
+		val.Reset();
 }

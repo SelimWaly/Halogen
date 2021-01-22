@@ -2,7 +2,7 @@
 
 bool CheckEntry(const TTEntry& entry, uint64_t key, int depth)
 {
-	return (entry.GetKey() == key && entry.GetDepth() >= depth);
+	return entry.KeyMatch(key) && entry.GetDepth() >= depth;
 }
 
 uint64_t TranspositionTable::HashFunction(const uint64_t& key) const
@@ -12,7 +12,7 @@ uint64_t TranspositionTable::HashFunction(const uint64_t& key) const
 
 bool CheckEntry(const TTEntry& entry, uint64_t key)
 {
-	return (entry.GetKey() == key);
+	return entry.KeyMatch(key);
 }
 
 void TranspositionTable::AddEntry(const Move& best, uint64_t ZobristKey, int Score, int Depth, int Turncount, int distanceFromRoot, EntryType Cutoff)
@@ -26,7 +26,7 @@ void TranspositionTable::AddEntry(const Move& best, uint64_t ZobristKey, int Sco
 
 	for (auto& entry : table[hash].entry)
 	{
-		if (entry.GetKey() == EMPTY || entry.GetKey() == ZobristKey)
+		if (entry.KeyMatch(EMPTY) || entry.KeyMatch(ZobristKey))
 		{
 			entry = TTEntry(best, ZobristKey, Score, Depth, Turncount, distanceFromRoot, Cutoff);
 			return;
@@ -34,9 +34,9 @@ void TranspositionTable::AddEntry(const Move& best, uint64_t ZobristKey, int Sco
 	}
 
 	int8_t currentAge = TTEntry::CalculateAge(Turncount, distanceFromRoot);	//Keep in mind age from each generation goes up so lower (generally) means older
-	std::array<int8_t, BucketSize> scores = {};
+	std::array<int8_t, TTBucket::Size> scores = {};
 
-	for (size_t i = 0; i < BucketSize; i++)
+	for (size_t i = 0; i < TTBucket::Size; i++)
 	{
 		int8_t age = currentAge - table[hash].entry[i].GetAge();
 		scores[i] = table[hash].entry[i].GetDepth() - 4 * (age >= 0 ? age : age + 16);
@@ -51,7 +51,7 @@ TTEntry TranspositionTable::GetEntry(uint64_t key, int distanceFromRoot)
 
 	for (auto entry : table[index].entry)
 	{
-		if (entry.GetKey() == key)
+		if (entry.KeyMatch(key))
 		{
 			entry.MateScoreAdjustment(distanceFromRoot);
 			return entry;
@@ -67,7 +67,7 @@ void TranspositionTable::ResetAge(uint64_t key, int halfmove, int distanceFromRo
 
 	for (auto& entry : table[index].entry)
 	{
-		if (entry.GetKey() == key)
+		if (entry.KeyMatch(key))
 		{
 			entry.SetHalfMove(halfmove, distanceFromRoot);
 		}
@@ -80,7 +80,7 @@ int TranspositionTable::GetCapacity(int halfmove) const
 
 	for (int i = 0; i < 1000; i++)	//1000 chosen specifically, because result needs to be 'per mill'
 	{
-		if (table.at(i / BucketSize).entry[i % BucketSize].GetAge() == static_cast<char>(halfmove % HALF_MOVE_MODULO))
+		if (table.at(i / TTBucket::Size).entry[i % TTBucket::Size].GetAge() == static_cast<char>(halfmove % HALF_MOVE_MODULO))
 			count++;
 	}
 
