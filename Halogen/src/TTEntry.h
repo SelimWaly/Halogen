@@ -51,15 +51,15 @@ private:
 	uint8_t halfmove : 4;	//4 bits (is stored as the halfmove at the ROOT of this current search, modulo 16)
 };
 
-//64 bytes
+//32 bytes
 struct TTBucket
 {
 	void Reset();
 
-	static const size_t Size = 64 / sizeof(TTEntry);
+	static const size_t Size = 32 / sizeof(TTEntry);
 	std::array<TTEntry, Size> entry;
 
 private:
-	std::array<char, 64 - Size * sizeof(TTEntry)> padding;	//add extra bytes to get to 64 if TTentry does not go evenly into 64 bytes
+	std::array<char, 32 - Size * sizeof(TTEntry)> padding;	//add extra bytes to get to 64 if TTentry does not go evenly into 64 bytes
 };
 
