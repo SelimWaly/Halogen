@@ -8,7 +8,7 @@
 // the ExtendedMove vector from the start.
 struct ExtendedMove
 {
-	ExtendedMove(const Move _move, const int _score = 0, const short int _SEE = 0) : move(_move), score(_score), SEE(_SEE) {}
+	explicit ExtendedMove(const Move _move, const int _score = 0, const short int _SEE = 0) : move(_move), score(_score), SEE(_SEE) {}
 	ExtendedMove(Square from, Square to, MoveFlag flag) : move(from, to, flag), score(0), SEE(0) {}
 
 	bool operator<(const ExtendedMove& rhs) const { return score < rhs.score; };
