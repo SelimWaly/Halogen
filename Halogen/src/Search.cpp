@@ -12,7 +12,7 @@ int Null_beta_quotent = 250;
 int Futility_linear = 25;
 int Futility_constant = 100;
 
-int Aspiration_window = 15;
+int Aspiration_window = 10;
 
 int Delta_margin = 200;
 
