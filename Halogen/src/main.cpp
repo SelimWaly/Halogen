@@ -10,7 +10,7 @@ uint64_t PerftDivide(unsigned int depth, Position& position);
 uint64_t Perft(unsigned int depth, Position& position);
 void Bench(int depth = 16);
 
-string version = "10.1";
+string version = "10.2";
 
 int main(int argc, char* argv[])
 {
@@ -38,8 +38,8 @@ int main(int argc, char* argv[])
 
 	/*Tuneable search constants*/
 
-	double timeIncCoeffA = 40.0;
-	double timeIncCoeffB = 30.0;
+	double timeIncCoeffA = 84.8;
+	double timeIncCoeffB = 21.4;
 
 	//---------------------------
 
