@@ -1,29 +1,35 @@
 #include "Search.h"
 
-/*Tuneable search constants*/
+constexpr double LMR_constant = -1.76;
+constexpr double LMR_coeff = 1.03;
 
-double LMR_constant = -1.76;
-double LMR_coeff = 1.03;
+constexpr int Null_constant = 4;
+constexpr int Null_depth_quotent = 6;
+constexpr int Null_beta_quotent = 250;
 
-int Null_constant = 4;
-int Null_depth_quotent = 6;
-int Null_beta_quotent = 250;
+constexpr int Aspiration_window = 15;
 
-int Futility_linear = 25;
-int Futility_constant = 100;
+constexpr int Delta_margin = 200;
 
-int Aspiration_window = 15;
+constexpr int SNMP_depth = 7;
+constexpr int SNMP_coeff = 119;
 
-int Delta_margin = 200;
+constexpr auto GenerateFutilityMargins()
+{
+	constexpr int Futility_linear = 25;
+	constexpr int Futility_constant = 100;
+	constexpr int FutilityMarginMaxDepth = 10;
 
-int SNMP_depth = 7;
-int SNMP_coeff = 119;
+	std::array<int, FutilityMarginMaxDepth> ret = {};
+	for (int i = 0; i < FutilityMarginMaxDepth; i++)
+	{
+		ret[i] = Futility_linear * i + Futility_constant;
+	}
+	return ret;
+}
 
-/*----------------*/
-
-constexpr int FutilityMaxDepth = 10;
-int FutilityMargins[FutilityMaxDepth];		//[depth]
-int LMR_reduction[64][64] = {};				//[depth][move number]
+constexpr auto FutilityMargin = GenerateFutilityMargins();	//[depth]
+int LMR_reduction[64][64] = {};								//[depth][move number]
 
 void PrintBestMove(Move Best);
 bool UseTransposition(const TTEntry& entry, int alpha, int beta);
@@ -102,11 +108,6 @@ uint64_t SearchThread(Position position, SearchParameters parameters, const Sear
 void InitSearch()
 {
 	KeepSearching = true;
-
-	for (int i = 0; i < FutilityMaxDepth; i++)
-	{
-		FutilityMargins[i] = Futility_linear * i + Futility_constant;
-	}
 
 	for (int i = 0; i < 64; i++)
 	{
@@ -310,7 +311,7 @@ SearchResult NegaScout(Position& position, unsigned int initialDepth, int depthR
 	if (GetHashMove(position, distanceFromRoot).IsUninitialized() && depthRemaining > 3)
 		depthRemaining--;
 
-	bool FutileNode = (depthRemaining < FutilityMaxDepth) && (staticScore + FutilityMargins[std::max<int>(0, depthRemaining)] < a);
+	bool FutileNode = (depthRemaining < FutilityMargin.size()) && (staticScore + FutilityMargin[std::max<int>(0, depthRemaining)] < a);
 
 	MoveGenerator gen(position, distanceFromRoot, locals, false);
 	Move move;
