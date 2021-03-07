@@ -25,6 +25,8 @@ constexpr int FutilityMaxDepth = 10;
 int FutilityMargins[FutilityMaxDepth];		//[depth]
 int LMR_reduction[64][64] = {};				//[depth][move number]
 
+constexpr int LMP[] = { 3, 6, 10, 15, 21 };	//[depth]
+
 void PrintBestMove(Move Best);
 bool UseTransposition(const TTEntry& entry, int alpha, int beta);
 bool CheckForRep(const Position& position, int distanceFromRoot);
@@ -326,6 +328,13 @@ SearchResult NegaScout(Position& position, unsigned int initialDepth, int depthR
 		//futility pruning
 		if (IsFutile(move, beta, alpha, position, InCheck) && searchedMoves > 0 && FutileNode)	//Possibly stop futility pruning if alpha or beta are close to mate scores
 			continue;
+
+		//late move pruning
+		if (!move.IsCapture() && !move.IsPromotion())
+		{
+			if (depthRemaining < std::size(LMP) && searchedMoves > LMP[std::max(0, depthRemaining)])
+				continue;
+		}
 
 		position.ApplyMove(move);
 		tTable.PreFetch(position.GetZobristKey());							//load the transposition into l1 cache. ~5% speedup
