@@ -147,49 +147,51 @@ enum GameStages
 
 void BBInit();
 int GetBitCount(uint64_t bb);
-
 char PieceToChar(unsigned int piece);
-unsigned int Piece(unsigned int piecetype, unsigned int colour);
-unsigned int GetPosition(unsigned int file, unsigned int rank);
-unsigned int AlgebraicToPos(const std::string& str);
-unsigned int ColourOfPiece(unsigned int piece);
+Square AlgebraicToPos(const std::string& str);
 
-constexpr PieceTypes GetPieceType(Pieces piece)
+constexpr auto ColourOfPiece(unsigned int piece)
+{
+	assert(piece < N_PIECES);
+	return static_cast<Players>(piece / N_PIECE_TYPES);
+}
+
+constexpr auto GetPieceType(unsigned int piece)
 {
 	return static_cast<PieceTypes>(piece % N_PIECE_TYPES);
 }
 
-constexpr File GetFile(Square square)
+constexpr auto GetFile(unsigned int square)
 {
 	assert(square < N_SQUARES);
 	return static_cast<File>(square % 8);
 }
 
-constexpr Rank GetRank(Square square)
+constexpr auto GetRank(unsigned int square)
 {
 	assert(square < N_SQUARES);
 	return static_cast<Rank>(square / 8);
 }
 
-constexpr Diagonal GetDiagonal(Square square)
+constexpr auto GetDiagonal(unsigned int square)
 {
 	assert(square < N_SQUARES);
-	return static_cast<Diagonal>((RANK_8 - GetRank(square)) + GetFile(square));
+	return static_cast<Diagonal>(RANK_8 - GetRank(square) + GetFile(square));
 }
 
-constexpr AntiDiagonal GetAntiDiagonal(Square square)
+constexpr auto GetAntiDiagonal(unsigned int square)
 {
 	assert(square < N_SQUARES);
 	return static_cast<AntiDiagonal>(RANK_8 + FILE_H - GetRank(square) - GetFile(square));
 }
 
-constexpr int RankDiff(Square sq1, Square sq2)
+constexpr auto RankDiff(unsigned int sq1, unsigned int sq2)
 {
 	assert(sq1 < N_SQUARES && sq2 < N_SQUARES); 
 	return static_cast<int>(GetRank(sq1)) - static_cast<int>(GetRank(sq2));
 }
 
-constexpr int FileDiff(Square sq1, Square sq2)
+constexpr auto FileDiff(unsigned int sq1, unsigned int sq2)
 {
 	assert(sq1 < N_SQUARES && sq2 < N_SQUARES);
 	return static_cast<int>(GetFile(sq1)) - static_cast<int>(GetFile(sq2));
@@ -203,7 +205,7 @@ constexpr auto abs_constexpr(T const& x) noexcept
 	return x < 0 ? -x : x;
 }
 
-constexpr unsigned int AbsRankDiff(Square sq1, Square sq2)
+constexpr unsigned int AbsRankDiff(unsigned int sq1, unsigned int sq2)
 {
 	assert(sq1 < N_SQUARES);
 	assert(sq2 < N_SQUARES);
@@ -211,7 +213,7 @@ constexpr unsigned int AbsRankDiff(Square sq1, Square sq2)
 	return abs_constexpr(static_cast<int>(GetRank(sq1)) - static_cast<int>(GetRank(sq2)));
 }
 
-constexpr unsigned int AbsFileDiff(Square sq1, Square sq2)
+constexpr unsigned int AbsFileDiff(unsigned int sq1, unsigned int sq2)
 {
 	assert(sq1 < N_SQUARES);
 	assert(sq2 < N_SQUARES);
@@ -219,61 +221,28 @@ constexpr unsigned int AbsFileDiff(Square sq1, Square sq2)
 	return abs_constexpr(static_cast<int>(GetFile(sq1)) - static_cast<int>(GetFile(sq2)));
 }
 
-//-------------------------
-// Non enum overrides
-
-constexpr unsigned int GetFile(unsigned int square)
+constexpr auto Piece(unsigned int type, unsigned int colour)
 {
-	return GetFile(static_cast<Square>(square));
+	assert(type < N_PIECE_TYPES);
+	assert(colour < N_PLAYERS);
+
+	return static_cast<Pieces>(type + N_PIECE_TYPES * colour);
 }
 
-constexpr unsigned int GetRank(unsigned int square)
+constexpr auto GetPosition(unsigned int file, unsigned int rank)
 {
-	return GetRank(static_cast<Square>(square));
+	assert(file < N_FILES);
+	assert(file < N_RANKS);
+
+	return static_cast<Square>(rank * 8 + file);
 }
-
-constexpr unsigned int GetDiagonal(unsigned int square)
-{
-	return GetDiagonal(static_cast<Square>(square));
-}
-
-constexpr unsigned int GetAntiDiagonal(unsigned int square)
-{
-	return GetAntiDiagonal(static_cast<Square>(square));
-}
-
-constexpr int RankDiff(unsigned int sq1, unsigned int sq2)
-{
-	return RankDiff(static_cast<Square>(sq1), static_cast<Square>(sq2));
-}
-
-constexpr int FileDiff(unsigned int sq1, unsigned int sq2)
-{
-	return FileDiff(static_cast<Square>(sq1), static_cast<Square>(sq2));
-}
-
-constexpr unsigned int AbsRankDiff(unsigned int sq1, unsigned int sq2)
-{
-	return AbsRankDiff(static_cast<Square>(sq1), static_cast<Square>(sq2));
-}
-
-constexpr unsigned int AbsFileDiff(unsigned int sq1, unsigned int sq2)
-{
-	return AbsFileDiff(static_cast<Square>(sq1), static_cast<Square>(sq2));
-}
-
-//-------------------------
-
-//TODO slowly change over the functions to use constexpr
-Pieces Piece(PieceTypes type, Players colour);
-Square GetPosition(File file, Rank rank);
 
 constexpr uint64_t EMPTY = 0;
 constexpr uint64_t UNIVERSE = 0xffffffffffffffff;
 
 namespace BitBoardInit	//so these don't polute the global scope
 {
-	constexpr std::array<uint64_t, N_RANKS> Rank()
+	constexpr auto Rank()
 	{
 		std::array<uint64_t, N_RANKS> ret {};
 		for (unsigned int i = 0; i < N_RANKS; i++)
@@ -281,7 +250,7 @@ namespace BitBoardInit	//so these don't polute the global scope
 		return ret;
 	}
 
-	constexpr std::array<uint64_t, N_FILES> File()
+	constexpr auto File()
 	{
 		std::array<uint64_t, N_FILES> ret {};
 		for (unsigned int i = 0; i < N_FILES; i++)
@@ -289,7 +258,7 @@ namespace BitBoardInit	//so these don't polute the global scope
 		return ret;
 	}
 
-	constexpr std::array<uint64_t, N_SQUARES> Square()
+	constexpr auto Square()
 	{
 		std::array<uint64_t, N_SQUARES> ret {};
 		for (unsigned int i = 0; i < N_SQUARES; i++)
@@ -297,7 +266,7 @@ namespace BitBoardInit	//so these don't polute the global scope
 		return ret;
 	}
 
-	constexpr std::array<uint64_t, N_DIAGONALS> Diagonal()
+	constexpr auto Diagonal()
 	{
 		std::array<uint64_t, N_DIAGONALS> ret { 0x100000000000000 };
 		for (unsigned int i = 1; i < N_DIAGONALS; i++)
@@ -308,9 +277,9 @@ namespace BitBoardInit	//so these don't polute the global scope
 		return ret;
 	}
 
-	constexpr std::array<uint64_t, N_ANTI_DIAGONALS> AntiDiagonal()
+	constexpr auto AntiDiagonal()
 	{
-		std::array<uint64_t, N_ANTI_DIAGONALS> ret {0x8000000000000000 };
+		std::array<uint64_t, N_ANTI_DIAGONALS> ret { 0x8000000000000000 };
 		for (unsigned int i = 1; i < N_ANTI_DIAGONALS; i++)
 			if (i > N_ANTI_DIAGONALS / 2)
 				ret[i] = (ret[i - 1] >> 8);
@@ -338,7 +307,7 @@ namespace BitBoardInit	//so these don't polute the global scope
 		return line & btwn;   /* return the bits on that line in-between */
 	}
 
-	constexpr std::array<std::array<uint64_t, N_SQUARES>, N_SQUARES> BetweenArray()
+	constexpr auto BetweenArray()
 	{
 		std::array<std::array<uint64_t, N_SQUARES>, N_SQUARES> ret{};
 		for (int i = 0; i < 64; i++)
@@ -352,16 +321,16 @@ namespace BitBoardInit	//so these don't polute the global scope
 	}
 }
 
-constexpr std::array<uint64_t, N_RANKS> RankBB = BitBoardInit::Rank();
-constexpr std::array<uint64_t, N_FILES> FileBB = BitBoardInit::File();
-constexpr std::array<uint64_t, N_SQUARES> SquareBB = BitBoardInit::Square();
-constexpr std::array<uint64_t, N_DIAGONALS> DiagonalBB = BitBoardInit::Diagonal();
-constexpr std::array<uint64_t, N_ANTI_DIAGONALS> AntiDiagonalBB = BitBoardInit::AntiDiagonal();
-constexpr std::array<std::array<uint64_t, N_SQUARES>, N_SQUARES> betweenArray = BitBoardInit::BetweenArray();
+constexpr auto RankBB = BitBoardInit::Rank();
+constexpr auto FileBB = BitBoardInit::File();
+constexpr auto SquareBB = BitBoardInit::Square();
+constexpr auto DiagonalBB = BitBoardInit::Diagonal();
+constexpr auto AntiDiagonalBB = BitBoardInit::AntiDiagonal();
+constexpr auto betweenArray = BitBoardInit::BetweenArray();
 
 namespace BitBoardInit
 {
-	constexpr std::array<uint64_t, N_SQUARES> Knight()
+	constexpr auto Knight()
 	{
 		std::array<uint64_t, N_SQUARES> ret{};
 		for (unsigned int i = 0; i < N_SQUARES; i++)
@@ -371,7 +340,7 @@ namespace BitBoardInit
 		return ret;
 	}
 
-	constexpr std::array<uint64_t, N_SQUARES> Rook()
+	constexpr auto Rook()
 	{
 		std::array<uint64_t, N_SQUARES> ret{};
 		for (unsigned int i = 0; i < N_SQUARES; i++)
@@ -379,7 +348,7 @@ namespace BitBoardInit
 		return ret;
 	}
 
-	constexpr std::array<uint64_t, N_SQUARES> Bishop()
+	constexpr auto Bishop()
 	{
 		std::array<uint64_t, N_SQUARES> ret{};
 		for (unsigned int i = 0; i < N_SQUARES; i++)
@@ -387,7 +356,7 @@ namespace BitBoardInit
 		return ret;
 	}
 
-	constexpr std::array<uint64_t, N_SQUARES> King()
+	constexpr auto King()
 	{
 		std::array<uint64_t, N_SQUARES> ret{};
 		for (unsigned int i = 0; i < N_SQUARES; i++)
@@ -397,7 +366,7 @@ namespace BitBoardInit
 		return ret;
 	}
 
-	constexpr std::array<std::array<uint64_t, N_SQUARES>, N_PLAYERS> Pawn()
+	constexpr auto Pawn()
 	{
 		std::array<std::array<uint64_t, N_SQUARES>, N_PLAYERS> ret{};
 		for (unsigned int i = 0; i < N_SQUARES; i++)
@@ -412,15 +381,15 @@ namespace BitBoardInit
 	}
 }
 
-constexpr std::array<uint64_t, N_SQUARES> KnightAttacks = BitBoardInit::Knight();
-constexpr std::array<uint64_t, N_SQUARES> RookAttacks = BitBoardInit::Rook();
-constexpr std::array<uint64_t, N_SQUARES> BishopAttacks = BitBoardInit::Bishop();
-constexpr std::array<uint64_t, N_SQUARES> KingAttacks = BitBoardInit::King();
-constexpr std::array<std::array<uint64_t, N_SQUARES>, N_PLAYERS> PawnAttacks = BitBoardInit::Pawn();
+constexpr auto KnightAttacks = BitBoardInit::Knight();
+constexpr auto RookAttacks = BitBoardInit::Rook();
+constexpr auto BishopAttacks = BitBoardInit::Bishop();
+constexpr auto KingAttacks = BitBoardInit::King();
+constexpr auto PawnAttacks = BitBoardInit::Pawn();
 
 namespace BitBoardInit
 {
-	constexpr std::array<uint64_t, N_SQUARES> Queen()
+	constexpr auto Queen()
 	{
 		std::array<uint64_t, N_SQUARES> ret{};
 		for (size_t i = 0; i < N_SQUARES; i++)
@@ -429,7 +398,7 @@ namespace BitBoardInit
 	}
 }
 
-constexpr std::array<uint64_t, N_SQUARES> QueenAttacks = BitBoardInit::Queen();
+constexpr auto QueenAttacks = BitBoardInit::Queen();
 
 int LSBpop(uint64_t &bb);
 int LSB(uint64_t bb);

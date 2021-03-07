@@ -50,7 +50,7 @@ bool BoardParameters::InitialiseParametersFromFen(const std::vector<std::string>
 	if (fen[2].find('q') != std::string::npos)
 		SetCanCastleBlackQueenside(true);
 
-	SetEnPassant(static_cast<Square>(AlgebraicToPos(fen[3])));
+	SetEnPassant(AlgebraicToPos(fen[3]));
 
 	SetFiftyMoveCount(std::stoi(fen[4]));
 	SetTurnCount(std::stoi(fen[5]));

@@ -1,16 +1,5 @@
 #include "BitBoardDefine.h"
 
-constexpr std::array<int, N_SQUARES> index64 = {
-	0, 47,  1, 56, 48, 27,  2, 60,
-   57, 49, 41, 37, 28, 16,  3, 61,
-   54, 58, 35, 52, 50, 42, 21, 44,
-   38, 32, 29, 23, 17, 11,  4, 62,
-   46, 55, 26, 59, 40, 36, 15, 53,
-   34, 51, 20, 43, 31, 22, 10, 45,
-   25, 39, 14, 33, 19, 30,  9, 24,
-   13, 18,  8, 12,  7,  6,  5, 63
-};
-
 Players operator!(const Players& val)
 {
 	return val == WHITE ? BLACK : WHITE;
@@ -34,46 +23,6 @@ void BBInit()
 	InitSliderAttacks(RookTable, RookAttacksMagic, RSteps);
 }
 
-char PieceToChar(unsigned int piece)
-{
-	assert(piece <= N_PIECES);
-
-	char PieceChar[13] = { 'p', 'n', 'b', 'r', 'q', 'k', 'P', 'N', 'B', 'R', 'Q', 'K', ' ' };
-	return PieceChar[piece];
-}
-
-unsigned int Piece(unsigned int piecetype, unsigned int colour)
-{
-	assert(piecetype < N_PIECE_TYPES);
-	assert(colour < N_PLAYERS);
-
-	return piecetype + N_PIECE_TYPES * colour;
-}
-
-Pieces Piece(PieceTypes type, Players colour)
-{
-	assert(type < N_PIECE_TYPES);
-	assert(colour < N_PLAYERS);
-
-	return static_cast<Pieces>(type + N_PIECE_TYPES * colour);
-}
-
-Square GetPosition(File file, Rank rank)
-{
-	assert(file < N_FILES);
-	assert(rank < N_RANKS);
-
-	return static_cast<Square>(rank * 8 + file);
-}
-
-unsigned int GetPosition(unsigned int file, unsigned int rank)
-{
-	assert(file < N_FILES);
-	assert(file < N_RANKS);
-
-	return rank * 8 + file;
-}
-
 int GetBitCount(uint64_t bb)
 {
 #if defined(_MSC_VER) && defined(USE_POPCNT) && defined(_WIN64)
@@ -85,21 +34,22 @@ int GetBitCount(uint64_t bb)
 #endif
 }
 
-unsigned int AlgebraicToPos(const std::string &str)
+char PieceToChar(unsigned int piece)
+{
+	assert(piece <= N_PIECES);
+
+	static constexpr std::array<char, N_PIECES + 1> PieceChar = { 'p', 'n', 'b', 'r', 'q', 'k', 'P', 'N', 'B', 'R', 'Q', 'K', ' ' };
+	return PieceChar[piece];
+}
+
+Square AlgebraicToPos(const std::string& str)
 {
 	if (str == "-")
 		return N_SQUARES;
 
 	assert(str.length() >= 2);
 
-	return (str[0] - 97) + (str[1] - 49) * 8;		
-}
-
-unsigned int ColourOfPiece(unsigned int piece)
-{
-	assert(piece < N_PIECES);
-
-	return piece / N_PIECE_TYPES;
+	return static_cast<Square>((str[0] - 97) + (str[1] - 49) * 8);
 }
 
 int LSBpop(uint64_t &bb)
@@ -128,8 +78,17 @@ int LSB(uint64_t bb)
 	 * @precondition bb != 0
 	 * @return index (0..63) of least significant one bit
 	 */
-	const uint64_t debruijn64 = uint64_t(0x03f79d71b4cb0a89);
-	return index64[((bb ^ (bb - 1)) * debruijn64) >> 58];
+	static constexpr std::array<int, N_SQUARES> index64 = {
+		0, 47,  1, 56, 48, 27,  2, 60,
+	   57, 49, 41, 37, 28, 16,  3, 61,
+	   54, 58, 35, 52, 50, 42, 21, 44,
+	   38, 32, 29, 23, 17, 11,  4, 62,
+	   46, 55, 26, 59, 40, 36, 15, 53,
+	   34, 51, 20, 43, 31, 22, 10, 45,
+	   25, 39, 14, 33, 19, 30,  9, 24,
+	   13, 18,  8, 12,  7,  6,  5, 63
+	};
+	return index64[((bb ^ (bb - 1)) * 0x03f79d71b4cb0a89) >> 58];
 #endif
 }
 
