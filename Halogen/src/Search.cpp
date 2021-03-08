@@ -539,7 +539,6 @@ bool AllowedNull(bool allowedNull, const Position& position, int beta, int alpha
 {
 	return allowedNull
 		&& !InCheck
-		&& !IsPV(beta, alpha)
 		&& !IsEndGame(position)
 		&& GetBitCount(position.GetAllPieces()) >= 5;	//avoid null move pruning in very late game positions due to zanauag issues. Even with verification search e.g 8/6k1/8/8/8/8/1K6/Q7 w - - 0 1 
 }
