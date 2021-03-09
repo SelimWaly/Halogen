@@ -1,5 +1,5 @@
 #include "Network.h"
-#include "epoch10.net"
+#include "epoch20.net"
 
 InputLayer <int16_t, int16_t, ARCHITECTURE[INPUT_LAYER], ARCHITECTURE[HIDDEN_LAYER_1]> Network::layer1;
 HiddenLayer <int16_t, int32_t, ARCHITECTURE[HIDDEN_LAYER_1], ARCHITECTURE[HIDDEN_LAYER_2]> Network::layer2;
