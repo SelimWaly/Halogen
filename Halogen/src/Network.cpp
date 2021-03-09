@@ -1,113 +1,138 @@
 #include "Network.h"
-#include "epoch655.net"
+#include "epoch0.net"
 
-std::array<std::array<int16_t, HIDDEN_NEURONS>, INPUT_NEURONS> Network::hiddenWeights = {};
-std::array<int16_t, HIDDEN_NEURONS> Network::hiddenBias = {};
-std::array<int16_t, HIDDEN_NEURONS> Network::outputWeights = {};
-int16_t Network::outputBias = {};
-
-template<typename T, size_t SIZE>
-[[nodiscard]] std::array<T, SIZE> ReLU(const std::array<T, SIZE>& source)
-{
-    std::array<T, SIZE> ret;
-
-    for (size_t i = 0; i < SIZE; i++)
-        ret[i] = std::max(T(0), source[i]);
-    
-    return ret;
-}
-
-template<typename T_out, typename T_in, size_t SIZE>
-void DotProduct(const std::array<T_in, SIZE>& a, const std::array<T_in, SIZE>& b, T_out& output)
-{
-    for (size_t i = 0; i < SIZE; i++)
-        output += a[i] * b[i];
-}
+InputLayer <int16_t, int16_t, ARCHITECTURE[INPUT_LAYER], ARCHITECTURE[HIDDEN_LAYER_1]> Network::layer1;
+HiddenLayer <int16_t, int32_t, ARCHITECTURE[HIDDEN_LAYER_1], ARCHITECTURE[HIDDEN_LAYER_2]> Network::layer2;
+OuputLayer <int32_t, int32_t, ARCHITECTURE[HIDDEN_LAYER_2]> Network::layer3;
 
 void Network::Init()
 {
     auto Data = reinterpret_cast<float*>(label);
-
-    for (size_t i = 0; i < HIDDEN_NEURONS; i++)
-        hiddenBias[i] = (int16_t)round(*Data++ * PRECISION);
-
-    for (size_t i = 0; i < INPUT_NEURONS; i++)
-        for (size_t j = 0; j < HIDDEN_NEURONS; j++)
-            hiddenWeights[i][j] = (int16_t)round(*Data++ * PRECISION);
-
-    outputBias = (int16_t)round(*Data++ * PRECISION);
-
-    for (size_t i = 0; i < HIDDEN_NEURONS; i++)
-        outputWeights[i] = (int16_t)round(*Data++ * PRECISION);
+    layer1.Init(Data);
+    layer2.Init(Data);
+    layer3.Init(Data);
 }
 
-void Network::RecalculateIncremental(const std::array<int16_t, INPUT_NEURONS>& inputs)
+template <typename T_in, typename T_out, size_t INPUT, size_t OUTPUT>
+void InputLayer<T_in, T_out, INPUT, OUTPUT>::Init(float*& data)
 {
-    Zeta = { hiddenBias };
+    for (size_t i = 0; i < OUTPUT; i++)
+        bias[i] = (T_out)round(*data++ * PRECISION);
 
-    for (size_t i = 0; i < HIDDEN_NEURONS; i++)
-        for (size_t j = 0; j < INPUT_NEURONS; j++)
-            Zeta[0][i] += inputs[j] * hiddenWeights[j][i];
+    for (size_t i = 0; i < INPUT; i++)
+        for (size_t j = 0; j < OUTPUT; j++)
+            weights[i][j] = (T_in)round(*data++ * PRECISION);
 }
 
-void Network::ApplyDelta(const deltaArray& update)
+template <typename T_in, typename T_out, size_t INPUT, size_t OUTPUT>
+void HiddenLayer<T_in, T_out, INPUT, OUTPUT>::Init(float*& data)
+{
+    for (size_t i = 0; i < OUTPUT; i++)
+        bias[i] = (T_out)round(*data++ * PRECISION);
+
+    for (size_t i = 0; i < INPUT; i++)
+        for (size_t j = 0; j < OUTPUT; j++)
+            weights[j][i] = (T_in)round(*data++ * PRECISION);
+}
+
+template <typename T_in, typename T_out, size_t INPUT>
+void OuputLayer<T_in, T_out, INPUT>::Init(float*& data)
+{
+    bias = (T_out)round(*data++ * PRECISION);
+
+    for (size_t i = 0; i < INPUT; i++)
+        weights[i] = (T_in)round(*data++ * PRECISION);
+}
+
+template <typename T_in, typename T_out, size_t INPUT, size_t OUTPUT>
+void InputLayer<T_in, T_out, INPUT, OUTPUT>::RecalculateIncremental(std::array<T_in, INPUT> inputs, std::vector<std::array<T_out, OUTPUT>>& Zeta) const
+{
+    Zeta = { bias };
+
+    for (size_t i = 0; i < OUTPUT; i++)
+        for (size_t j = 0; j < INPUT; j++)
+            Zeta[0][i] += inputs[j] * weights[j][i];
+}
+
+template <typename T_in, typename T_out, size_t INPUT, size_t OUTPUT>
+void InputLayer<T_in, T_out, INPUT, OUTPUT>::ApplyDelta(const deltaArray& update, std::vector<std::array<T_out, OUTPUT>>& Zeta) const
 {
     Zeta.push_back(Zeta.back());
 
     for (size_t i = 0; i < update.size; i++)
     {
         if (update.deltas[i].delta == 1)
-            for (size_t j = 0; j < HIDDEN_NEURONS; j++)
-                Zeta.back()[j] += hiddenWeights[update.deltas[i].index][j];
+            for (size_t j = 0; j < OUTPUT; j++)
+                Zeta.back()[j] += weights[update.deltas[i].index][j];
         else
-            for (size_t j = 0; j < HIDDEN_NEURONS; j++)
-                Zeta.back()[j] -= hiddenWeights[update.deltas[i].index][j];
+            for (size_t j = 0; j < OUTPUT; j++)
+                Zeta.back()[j] -= weights[update.deltas[i].index][j];
     }
 }
 
-void Network::ApplyInverseDelta()
+template <typename T_in, typename T_out, size_t INPUT, size_t OUTPUT>
+void InputLayer<T_in, T_out, INPUT, OUTPUT>::ApplyInverseDelta(std::vector<std::array<T_out, OUTPUT>>& Zeta) const
 {
     Zeta.pop_back();
 }
 
-int16_t Network::QuickEval() const
+template <typename T_in, typename T_out, size_t INPUT, size_t OUTPUT>
+std::array<T_out, OUTPUT> InputLayer<T_in, T_out, INPUT, OUTPUT>::GetActivation(const std::vector<std::array<T_out, OUTPUT>>& Zeta) const
 {
-    int32_t output = outputBias * PRECISION;
-    DotProduct(ReLU(Zeta.back()), outputWeights, output);
-    return output / SQUARE_PRECISION;
+    std::array<T_out, OUTPUT> ret;
+
+    for (size_t i = 0; i < OUTPUT; i++)
+        ret[i] = Activation(Zeta.back()[i]);
+
+    return ret;
 }
 
-/*void QuantizationAnalysis()
+template<typename T_in, typename T_out, size_t INPUT, size_t OUTPUT>
+std::array<T_out, OUTPUT> HiddenLayer<T_in, T_out, INPUT, OUTPUT>::FeedForward(const std::array<T_in, INPUT>& input) const
 {
-    auto Data = reinterpret_cast<float*>(label);
+    std::array<T_out, OUTPUT> ret = {};
 
-    float weight = 0;
+    for (size_t i = 0; i < OUTPUT; i++)
+    {
+        for (size_t j = 0; j < INPUT; j++)
+            ret[i] += input[j] * weights[i][j];
 
-    //hidden bias
-    for (size_t i = 0; i < HIDDEN_NEURONS; i++)
-        weight = std::max(weight, abs(*Data++));
+        ret[i] /= PRECISION;
+        ret[i] += bias[i];
+        Activation(ret[i]);
+    }
 
-    std::cout << weight << std::endl;
-    weight = 0;
+    return ret;
+}
 
-    //hidden weight
-    for (size_t i = 0; i < INPUT_NEURONS; i++)
-        for (size_t j = 0; j < HIDDEN_NEURONS; j++)
-            weight = std::max(weight, abs(*Data++));
 
-    std::cout << weight << std::endl;
-    weight = 0;
+template <typename T_in, typename T_out, size_t INPUT>
+T_out OuputLayer<T_in, T_out, INPUT>::FeedForward(const std::array<T_in, INPUT>& input) const
+{
+    T_out zeta = bias * PRECISION;
 
-    //output bias
-    weight = std::max(weight, abs(*Data++));
+    for (size_t j = 0; j < INPUT; j++)
+        zeta += input[j] * weights[j];
 
-    std::cout << weight << std::endl;
-    weight = 0;
+    return zeta;
+}
 
-    //output weights
-    for (size_t i = 0; i < HIDDEN_NEURONS; i++)
-        weight = std::max(weight, abs(*Data++));
+void Network::RecalculateIncremental(std::array<int16_t, ARCHITECTURE[INPUT_LAYER]> inputs)
+{
+    layer1.RecalculateIncremental(inputs, Zeta);
+}
 
-    std::cout << weight << std::endl;
-    weight = 0;
-}*/
+void Network::ApplyDelta(const deltaArray& update)
+{
+    layer1.ApplyDelta(update, Zeta);
+}
+
+void Network::ApplyInverseDelta()
+{
+    layer1.ApplyInverseDelta(Zeta);
+}
+
+int16_t Network::Eval() const
+{
+    return layer3.FeedForward(layer2.FeedForward(layer1.GetActivation(Zeta))) / SQUARE_PRECISION;
+}

@@ -13,14 +13,21 @@
 #include "EvalCache.h"
 #include "BitBoardDefine.h"
 
-constexpr size_t INPUT_NEURONS = 12 * 64;
-constexpr size_t HIDDEN_NEURONS = 256;
+enum
+{
+    INPUT_LAYER,
+    HIDDEN_LAYER_1,
+    HIDDEN_LAYER_2,
+    OUTPUT_LAYER,
+
+    N_LAYERS
+};
+
+constexpr size_t ARCHITECTURE[N_LAYERS] = { 768, 256, 32, 1 };
 
 constexpr int16_t MAX_VALUE = 128;
 constexpr int16_t PRECISION = ((size_t)std::numeric_limits<int16_t>::max() + 1) / MAX_VALUE;
 constexpr int32_t SQUARE_PRECISION = (int32_t)PRECISION * PRECISION;
-constexpr int32_t HALF_SQUARE_PRECISION = SQUARE_PRECISION / 2;
-constexpr int16_t HALF_PRECISION = PRECISION / 2;
 
 struct deltaArray
 {
@@ -34,22 +41,65 @@ struct deltaArray
     deltaPoint deltas[4];
 };
 
+template <typename T_in, typename T_out, size_t INPUT, size_t OUTPUT>
+class InputLayer
+{
+public:
+    void Init(float*& data);
+
+    void RecalculateIncremental(std::array<T_in, INPUT> inputs, std::vector<std::array<T_out, OUTPUT>>& Zeta) const;
+    void ApplyDelta(const deltaArray& update, std::vector<std::array<T_out, OUTPUT>>& Zeta) const;
+    void ApplyInverseDelta(std::vector<std::array<T_out, OUTPUT>>& Zeta) const;
+
+    std::array<T_out, OUTPUT> GetActivation(const std::vector<std::array<T_out, OUTPUT>>& Zeta) const;
+
+private:
+    std::array<std::array<T_in, OUTPUT>, INPUT> weights;
+    std::array<T_out, OUTPUT> bias;
+
+    T_out Activation(T_out val) const { return std::max(T_out(0), val); }
+};
+
+template <typename T_in, typename T_out, size_t INPUT, size_t OUTPUT>
+class HiddenLayer
+{
+public:
+    void Init(float*& data);
+    std::array<T_out, OUTPUT> FeedForward(const std::array<T_in, INPUT>& input) const;
+
+private:
+    std::array<std::array<T_in, INPUT>, OUTPUT> weights;
+    std::array<T_out, OUTPUT> bias;
+
+    void Activation(T_out& val) const { val = std::max(T_out(0), val); }
+};
+
+template <typename T_in, typename T_out, size_t INPUT>
+class OuputLayer
+{
+public:
+    void Init(float*& data);
+    T_out FeedForward(const std::array<T_in, INPUT>& input) const;
+
+private:
+    std::array<T_in, INPUT> weights;
+    T_out bias;
+};
+
 class Network
 {
 public:
-    void RecalculateIncremental(const std::array<int16_t, INPUT_NEURONS>& inputs);
+    void RecalculateIncremental(std::array<int16_t, ARCHITECTURE[INPUT_LAYER]> inputs);
     void ApplyDelta(const deltaArray& update);  //incrementally update the connections between input layer and first hidden layer
     void ApplyInverseDelta();                   //for un-make moves
-    int16_t QuickEval() const;                  //when used with above, this just calculates starting from the alpha of first hidden layer and skips input -> hidden
+    int16_t Eval() const;                       //when used with above, this just calculates starting from the alpha of first hidden layer and skips input -> hidden
 
     static void Init();
 
 private:
-    std::vector<std::array<int16_t, HIDDEN_NEURONS>> Zeta;
+    std::vector<std::array<int16_t, ARCHITECTURE[HIDDEN_LAYER_1]>> Zeta;
 
-    static std::array<std::array<int16_t, HIDDEN_NEURONS>, INPUT_NEURONS> hiddenWeights;
-    static std::array<int16_t, HIDDEN_NEURONS> hiddenBias;
-    static std::array<int16_t, HIDDEN_NEURONS> outputWeights;
-    static int16_t outputBias;
+    static InputLayer <int16_t, int16_t, ARCHITECTURE[INPUT_LAYER], ARCHITECTURE[HIDDEN_LAYER_1]> layer1;
+    static HiddenLayer <int16_t, int32_t, ARCHITECTURE[HIDDEN_LAYER_1], ARCHITECTURE[HIDDEN_LAYER_2]> layer2;
+    static OuputLayer <int32_t, int32_t, ARCHITECTURE[HIDDEN_LAYER_2]> layer3;
 };
-
