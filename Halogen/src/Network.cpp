@@ -72,7 +72,7 @@ void Network::ApplyInverseDelta()
 
 int16_t Network::QuickEval() const
 {
-    int32_t output = outputBias * PRECISION;
+    int32_t output = 0;
     DotProduct(ReLU(Zeta.back()), outputWeights, output);
     return output / SQUARE_PRECISION;
 }
