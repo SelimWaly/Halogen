@@ -1,10 +1,10 @@
 #include "Network.h"
 #include "epoch655.net"
 
-std::array<std::array<int16_t, HIDDEN_NEURONS>, INPUT_NEURONS> Network::hiddenWeights = {};
-std::array<int16_t, HIDDEN_NEURONS> Network::hiddenBias = {};
-std::array<int16_t, HIDDEN_NEURONS> Network::outputWeights = {};
-int16_t Network::outputBias = {};
+std::array<std::array<float, HIDDEN_NEURONS>, INPUT_NEURONS> Network::hiddenWeights = {};
+std::array<float, HIDDEN_NEURONS> Network::hiddenBias = {};
+std::array<float, HIDDEN_NEURONS> Network::outputWeights = {};
+float Network::outputBias = {};
 
 template<typename T, size_t SIZE>
 [[nodiscard]] std::array<T, SIZE> ReLU(const std::array<T, SIZE>& source)
@@ -29,16 +29,16 @@ void Network::Init()
     auto Data = reinterpret_cast<float*>(label);
 
     for (size_t i = 0; i < HIDDEN_NEURONS; i++)
-        hiddenBias[i] = (int16_t)round(*Data++ * PRECISION);
+        hiddenBias[i] = *Data++;
 
     for (size_t i = 0; i < INPUT_NEURONS; i++)
         for (size_t j = 0; j < HIDDEN_NEURONS; j++)
-            hiddenWeights[i][j] = (int16_t)round(*Data++ * PRECISION);
+            hiddenWeights[i][j] = *Data++;
 
-    outputBias = (int16_t)round(*Data++ * PRECISION);
+    outputBias = *Data++;
 
     for (size_t i = 0; i < HIDDEN_NEURONS; i++)
-        outputWeights[i] = (int16_t)round(*Data++ * PRECISION);
+        outputWeights[i] = *Data++;
 }
 
 void Network::RecalculateIncremental(const std::array<int16_t, INPUT_NEURONS>& inputs)
@@ -72,42 +72,7 @@ void Network::ApplyInverseDelta()
 
 int16_t Network::QuickEval() const
 {
-    int32_t output = outputBias * PRECISION;
+    float output = outputBias;
     DotProduct(ReLU(Zeta.back()), outputWeights, output);
-    return output / SQUARE_PRECISION;
+    return round(output);
 }
-
-/*void QuantizationAnalysis()
-{
-    auto Data = reinterpret_cast<float*>(label);
-
-    float weight = 0;
-
-    //hidden bias
-    for (size_t i = 0; i < HIDDEN_NEURONS; i++)
-        weight = std::max(weight, abs(*Data++));
-
-    std::cout << weight << std::endl;
-    weight = 0;
-
-    //hidden weight
-    for (size_t i = 0; i < INPUT_NEURONS; i++)
-        for (size_t j = 0; j < HIDDEN_NEURONS; j++)
-            weight = std::max(weight, abs(*Data++));
-
-    std::cout << weight << std::endl;
-    weight = 0;
-
-    //output bias
-    weight = std::max(weight, abs(*Data++));
-
-    std::cout << weight << std::endl;
-    weight = 0;
-
-    //output weights
-    for (size_t i = 0; i < HIDDEN_NEURONS; i++)
-        weight = std::max(weight, abs(*Data++));
-
-    std::cout << weight << std::endl;
-    weight = 0;
-}*/

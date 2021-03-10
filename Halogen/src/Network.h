@@ -16,12 +16,6 @@
 constexpr size_t INPUT_NEURONS = 12 * 64;
 constexpr size_t HIDDEN_NEURONS = 256;
 
-constexpr int16_t MAX_VALUE = 128;
-constexpr int16_t PRECISION = ((size_t)std::numeric_limits<int16_t>::max() + 1) / MAX_VALUE;
-constexpr int32_t SQUARE_PRECISION = (int32_t)PRECISION * PRECISION;
-constexpr int32_t HALF_SQUARE_PRECISION = SQUARE_PRECISION / 2;
-constexpr int16_t HALF_PRECISION = PRECISION / 2;
-
 struct deltaArray
 {
     struct deltaPoint
@@ -45,11 +39,11 @@ public:
     static void Init();
 
 private:
-    std::vector<std::array<int16_t, HIDDEN_NEURONS>> Zeta;
+    std::vector<std::array<float, HIDDEN_NEURONS>> Zeta;
 
-    static std::array<std::array<int16_t, HIDDEN_NEURONS>, INPUT_NEURONS> hiddenWeights;
-    static std::array<int16_t, HIDDEN_NEURONS> hiddenBias;
-    static std::array<int16_t, HIDDEN_NEURONS> outputWeights;
-    static int16_t outputBias;
+    static std::array<std::array<float, HIDDEN_NEURONS>, INPUT_NEURONS> hiddenWeights;
+    static std::array<float, HIDDEN_NEURONS> hiddenBias;
+    static std::array<float, HIDDEN_NEURONS> outputWeights;
+    static float outputBias;
 };
 
