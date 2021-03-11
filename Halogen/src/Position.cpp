@@ -400,9 +400,9 @@ uint64_t Position::IncrementZobristKey(Move move)
 	return key;
 }
 
-std::array<int16_t, INPUT_NEURONS> Position::GetInputLayer() const
+std::array<int8_t, INPUT_NEURONS> Position::GetInputLayer() const
 {
-	std::array<int16_t, INPUT_NEURONS> ret;
+	std::array<int8_t, INPUT_NEURONS> ret;
 
 	for (int i = 0; i < N_PIECES; i++)
 	{

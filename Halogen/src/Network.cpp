@@ -1,7 +1,7 @@
 #include "Network.h"
 #include "epoch321.net"
 
-std::array<std::array<int16_t, HIDDEN_NEURONS>, INPUT_NEURONS> Network::hiddenWeights = {};
+std::array<std::array<int8_t, HIDDEN_NEURONS>, INPUT_NEURONS> Network::hiddenWeights = {};
 std::array<int16_t, HIDDEN_NEURONS> Network::hiddenBias = {};
 std::array<int16_t, HIDDEN_NEURONS> Network::outputWeights = {};
 int16_t Network::outputBias = {};
@@ -29,19 +29,19 @@ void Network::Init()
     auto Data = reinterpret_cast<float*>(label);
 
     for (size_t i = 0; i < HIDDEN_NEURONS; i++)
-        hiddenBias[i] = (int16_t)round(*Data++ * PRECISION);
+        hiddenBias[i] = (int16_t)round(*Data++ * 2);
 
     for (size_t i = 0; i < INPUT_NEURONS; i++)
         for (size_t j = 0; j < HIDDEN_NEURONS; j++)
-            hiddenWeights[i][j] = (int16_t)round(*Data++ * PRECISION);
+            hiddenWeights[i][j] = (int16_t)round(*Data++ * 2);
 
-    outputBias = (int16_t)round(*Data++ * PRECISION);
+    outputBias = (int16_t)round(*Data++ * 256);
 
     for (size_t i = 0; i < HIDDEN_NEURONS; i++)
-        outputWeights[i] = (int16_t)round(*Data++ * PRECISION);
+        outputWeights[i] = (int16_t)round(*Data++ * 256);
 }
 
-void Network::RecalculateIncremental(const std::array<int16_t, INPUT_NEURONS>& inputs)
+void Network::RecalculateIncremental(const std::array<int8_t, INPUT_NEURONS>& inputs)
 {
     Zeta = { hiddenBias };
 
@@ -72,9 +72,9 @@ void Network::ApplyInverseDelta()
 
 int16_t Network::QuickEval() const
 {
-    int32_t output = outputBias * PRECISION;
+    int32_t output = outputBias * 256;
     DotProduct(ReLU(Zeta.back()), outputWeights, output);
-    return output / SQUARE_PRECISION;
+    return output / 512;
 }
 
 /*void QuantizationAnalysis()
