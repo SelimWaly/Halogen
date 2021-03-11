@@ -1,8 +1,5 @@
 #include "EvalNet.h"
 
-int pieceValueVector[N_STAGES][N_PIECE_TYPES] = { {91, 532, 568, 715, 1279, 5000},
-                                                  {111, 339, 372, 638, 1301, 5000} };
-
 constexpr int TEMPO = 10;
 
 void NetworkScaleAdjustment(int& eval);
@@ -34,10 +31,24 @@ void TempoAdjustment(int& eval, const Position& position)
 
 void NoPawnAdjustment(int& eval, const Position& position)
 {
-    if (eval > 0 && position.GetPieceBB(PAWN, WHITE) == 0)
-        eval /= 2;
-    if (eval < 0 && position.GetPieceBB(PAWN, BLACK) == 0)
-        eval /= 2;
+    static constexpr int pieceValues[] = { 100, 300, 300, 500, 900 };
+
+    int material = 0;
+    Players stronger = eval > 0 ? WHITE : BLACK;
+
+    material += pieceValues[KNIGHT] * (GetBitCount(position.GetPieceBB(Piece(KNIGHT, stronger))) - GetBitCount(position.GetPieceBB(Piece(KNIGHT, !stronger))));
+    material += pieceValues[BISHOP] * (GetBitCount(position.GetPieceBB(Piece(BISHOP, stronger))) - GetBitCount(position.GetPieceBB(Piece(BISHOP, !stronger))));
+    material += pieceValues[ROOK] * (GetBitCount(position.GetPieceBB(Piece(ROOK, stronger))) - GetBitCount(position.GetPieceBB(Piece(ROOK, !stronger))));
+    material += pieceValues[QUEEN] * (GetBitCount(position.GetPieceBB(Piece(QUEEN, stronger))) - GetBitCount(position.GetPieceBB(Piece(QUEEN, !stronger))));
+
+    if ((eval > 0 && position.GetPieceBB(PAWN, WHITE) == 0) ||
+        (eval < 0 && position.GetPieceBB(PAWN, BLACK) == 0))
+    {
+        if (material < 400)
+            eval /= 8;
+        else
+            eval /= 2;
+    }
 }
 
 void NetworkScaleAdjustment(int& eval)
