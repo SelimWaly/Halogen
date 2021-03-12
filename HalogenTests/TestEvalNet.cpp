@@ -62,14 +62,14 @@ namespace EvalNet
 		{
 			int value = 20;
 			NetworkScaleAdjustment(value);
-			Assert::AreEqual(18, value);
+			Assert::AreEqual(17, value);
 		}
 
 		TEST_METHOD(LargeValue)
 		{
 			int value = 2000;
 			NetworkScaleAdjustment(value);
-			Assert::AreEqual(1880, value);
+			Assert::AreEqual(1760, value);
 		}
 	};
 

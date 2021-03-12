@@ -71,7 +71,7 @@ void NoPawnAdjustment(int& eval, const Position& position)
 
 void NetworkScaleAdjustment(int& eval)
 {
-    eval = eval * 94 / 100;
+    eval = eval * 88 / 100;
 }
 
 UNIT_TEST_END(UnitTestEvalNet);
