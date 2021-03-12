@@ -10,7 +10,6 @@ int EvaluatePositionNet(const Position& position, EvalCacheTable& evalTable)
     {
         eval = position.GetEvaluation();
 
-        NetworkScaleAdjustment(eval);
         NoPawnAdjustment(eval, position);
         TempoAdjustment(eval, position);
 
@@ -67,11 +66,6 @@ void NoPawnAdjustment(int& eval, const Position& position)
         eval /= 2;
     if (eval < 0 && position.GetPieceBB(PAWN, BLACK) == 0)
         eval /= 2;
-}
-
-void NetworkScaleAdjustment(int& eval)
-{
-    eval = eval * 94 / 100;
 }
 
 UNIT_TEST_END(UnitTestEvalNet);
