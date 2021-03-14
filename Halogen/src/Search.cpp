@@ -332,7 +332,7 @@ SearchResult NegaScout(Position& position, unsigned int initialDepth, int depthR
 		int extendedDepth = depthRemaining + extension(position, alpha, beta);
 
 		//late move reductions
-		if (searchedMoves > 3)
+		if (searchedMoves > 2)
 		{
 			int reduction = Reduction(depthRemaining, searchedMoves);
 
