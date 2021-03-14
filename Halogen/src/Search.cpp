@@ -640,15 +640,6 @@ SearchResult Quiescence(Position& position, unsigned int initialDepth, int alpha
 		if (staticScore + SEE + Delta_margin < alpha) 						//delta pruning
 			break;
 
-		if (SEE < 0)														//prune bad captures
-			break;
-
-		if (SEE <= 0 && position.GetCaptureSquare() != move.GetTo())		//prune equal captures that aren't recaptures
-			continue;
-
-		if (move.IsPromotion() && !(move.GetFlag() == QUEEN_PROMOTION || move.GetFlag() == QUEEN_PROMOTION_CAPTURE))	//prune underpromotions
-			break;
-
 		position.ApplyMove(move);
 		int newScore = -Quiescence(position, initialDepth, -beta, -alpha, -colour, distanceFromRoot + 1, depthRemaining - 1, locals, sharedData).GetScore();
 		position.RevertMove();
