@@ -232,15 +232,20 @@ Move GetHashMove(const Position& position, int distanceFromRoot)
 int see(Position& position, Square square, Players side)
 {
 	int value = 0;
-	Move capture = GetSmallestAttackerMove(position, square, side);
+	Move move = GetSmallestAttackerMove(position, square, side);
 
-	if (!capture.IsUninitialized())
+	if (!move.IsUninitialized())
 	{
-		int captureValue = PieceValues[position.GetSquare(capture.GetTo())];
+		Pieces captured = position.GetSquare(move.GetTo());
+		int captureValue = PieceValues[captured];
 
-		position.ApplyMoveQuick(capture);
+		position.SetSquare(move.GetTo(), position.GetSquare(move.GetFrom()));
+		position.ClearSquare(move.GetFrom());
+
 		value = std::max(0, captureValue - see(position, square, !side));	// Do not consider captures if they lose material, therefor max zero 
-		position.RevertMoveQuick();
+
+		position.SetSquare(move.GetFrom(), position.GetSquare(move.GetTo()));
+		position.SetSquare(move.GetTo(), captured);
 	}
 
 	return value;
@@ -253,11 +258,16 @@ int seeCapture(Position& position, const Move& move)
 	Players side = position.GetTurn();
 
 	int value = 0;
-	int captureValue = PieceValues[position.GetSquare(move.GetTo())];
+	Pieces captured = position.GetSquare(move.GetTo());
+	int captureValue = PieceValues[captured];
 
-	position.ApplyMoveQuick(move);
+	position.SetSquare(move.GetTo(), position.GetSquare(move.GetFrom()));
+	position.ClearSquare(move.GetFrom());
+
 	value = captureValue - see(position, move.GetTo(), !side);
-	position.RevertMoveQuick();
+
+	position.SetSquare(move.GetFrom(), position.GetSquare(move.GetTo()));
+	position.SetSquare(move.GetTo(), captured);
 
 	return value;
 }
