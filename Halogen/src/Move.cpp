@@ -70,18 +70,3 @@ bool Move::IsUninitialized() const
 {
 	return (data == 0);
 }
-
-void Move::SetFrom(Square from)
-{
-	data |= from;
-}
-
-void Move::SetTo(Square to)
-{
-	data |= to << 6;
-}
-
-void Move::SetFlag(MoveFlag flag)
-{
-	data |= flag << 12;
-}
