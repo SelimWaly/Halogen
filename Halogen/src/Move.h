@@ -29,7 +29,7 @@ enum MoveFlag
 class Move
 {
 public:
-	Move();
+	Move() = default;
 	Move(Square from, Square to, MoveFlag flag);
 
 	Square GetFrom() const;

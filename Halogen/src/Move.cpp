@@ -6,22 +6,8 @@ const unsigned int FROM_MASK = 0b111111;		// 0 0 0 0 0 0 0 0 0 0 1 1 1 1 1 1
 const unsigned int TO_MASK = 0b111111 << 6;		// 0 0 0 0 1 1 1 1 1 1 0 0 0 0 0 0
 const unsigned int FLAG_MASK = 0b1111 << 12;	// 1 1 1 1 0 0 0 0 0 0 0 0 0 0 0 0 
 
-Move::Move()
-{
-}
 
-Move::Move(Square from, Square to, MoveFlag flag)
-{
-	assert(from < 64);
-	assert(to < 64);
-	assert(flag < 16);
-
-	SetFrom(from);
-	SetTo(to);
-	SetFlag(flag);
-}
-
-
+Move::Move(Square from, Square to, MoveFlag flag) : data((from) | (to << 6) | (flag << 12)) {}
 
 Square Move::GetFrom() const
 {
@@ -87,18 +73,15 @@ bool Move::IsUninitialized() const
 
 void Move::SetFrom(Square from)
 {
-	data &= ~FROM_MASK;
 	data |= from;
 }
 
 void Move::SetTo(Square to)
 {
-	data &= ~TO_MASK;
 	data |= to << 6;
 }
 
 void Move::SetFlag(MoveFlag flag)
 {
-	data &= ~FLAG_MASK;
 	data |= flag << 12;
 }
