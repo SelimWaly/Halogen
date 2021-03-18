@@ -21,7 +21,7 @@ int SNMP_coeff = 119;
 
 /*----------------*/
 
-constexpr int FutilityMaxDepth = 10;
+constexpr int FutilityMaxDepth = 8;
 int FutilityMargins[FutilityMaxDepth];		//[depth]
 int LMR_reduction[64][64] = {};				//[depth][move number]
 
