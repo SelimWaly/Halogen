@@ -609,6 +609,18 @@ int TBWinIn(int distanceFromRoot)
 	return TB_WIN_SCORE - distanceFromRoot;
 }
 
+int GetDeltaMargin(Position const& position)
+{
+	if (position.GetPieceBB(QUEEN, !position.GetTurn()))
+		return 900;
+	if (position.GetPieceBB(ROOK, !position.GetTurn()))
+		return 500;
+	if (position.GetPieceBB(BISHOP, !position.GetTurn()) | position.GetPieceBB(KNIGHT, !position.GetTurn()))
+		return 300;
+
+	return 0;
+}
+
 SearchResult Quiescence(Position& position, unsigned int initialDepth, int alpha, int beta, int colour, unsigned int distanceFromRoot, int depthRemaining, SearchData& locals, ThreadSharedData& sharedData)
 {
 	position.ReportDepth(distanceFromRoot);
@@ -623,6 +635,10 @@ SearchResult Quiescence(Position& position, unsigned int initialDepth, int alpha
 
 	int staticScore = colour * EvaluatePositionNet(position, locals.evalTable);
 	if (staticScore >= beta) return staticScore;
+
+	if (staticScore + GetDeltaMargin(position) + Delta_margin < alpha)
+		return alpha;
+
 	if (staticScore > alpha) alpha = staticScore;
 	
 	Move bestmove;
