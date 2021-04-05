@@ -1,4 +1,5 @@
 #include "EvalNet.h"
+#include "MoveGeneration.h"
 
 using namespace UnitTestEvalNet;
 
@@ -11,7 +12,8 @@ int EvaluatePositionNet(const Position& position, EvalCacheTable& evalTable)
         eval = position.GetEvaluation();
 
         NoPawnAdjustment(eval, position);
-        TempoAdjustment(eval, position);
+        eval += TempoAdjustment(position);
+        eval += MobilityAdjustment(position);
 
         evalTable.AddEntry(position.GetZobristKey(), eval);
     }
@@ -55,10 +57,10 @@ bool DeadPosition(const Position& position)
 namespace UnitTestEvalNet
 {
 
-void TempoAdjustment(int& eval, const Position& position)
+int TempoAdjustment(const Position& position)
 {
     constexpr static int TEMPO = 10;
-    eval += position.GetTurn() == WHITE ? TEMPO : -TEMPO;
+    return position.GetTurn() == WHITE ? TEMPO : -TEMPO;
 }
 
 void NoPawnAdjustment(int& eval, const Position& position)
@@ -67,6 +69,50 @@ void NoPawnAdjustment(int& eval, const Position& position)
         eval /= 2;
     if (eval < 0 && position.GetPieceBB(PAWN, BLACK) == 0)
         eval /= 2;
+}
+
+int MobilityAdjustment(const Position& position)
+{
+    static constexpr int MobilityScore[] = { 0, 1, 1, 1, 1, 0 };
+
+    uint64_t wKnight = position.GetPieceBB(WHITE_KNIGHT);
+    uint64_t bKnight = position.GetPieceBB(BLACK_KNIGHT);
+    uint64_t wBishop = position.GetPieceBB(WHITE_BISHOP);
+    uint64_t bBishop = position.GetPieceBB(BLACK_BISHOP);
+
+    uint64_t occupancy = position.GetAllPieces();
+
+    int score = 0;
+
+    while (wKnight)
+    {
+        Square square = static_cast<Square>(LSBpop(wKnight));
+        uint64_t attacks = AttackBB<KNIGHT>(square, occupancy) & ~occupancy;
+        score += GetBitCount(attacks) * MobilityScore[KNIGHT];
+    }
+
+    while (bKnight)
+    {
+        Square square = static_cast<Square>(LSBpop(bKnight));
+        uint64_t attacks = AttackBB<KNIGHT>(square, occupancy) & ~occupancy;
+        score -= GetBitCount(attacks) * MobilityScore[KNIGHT];
+    }
+
+    while (wBishop)
+    {
+        Square square = static_cast<Square>(LSBpop(wBishop));
+        uint64_t attacks = AttackBB<BISHOP>(square, occupancy) & ~occupancy;
+        score += GetBitCount(attacks) * MobilityScore[BISHOP];
+    }
+
+    while (bBishop)
+    {
+        Square square = static_cast<Square>(LSBpop(bBishop));
+        uint64_t attacks = AttackBB<BISHOP>(square, occupancy) & ~occupancy;
+        score -= GetBitCount(attacks) * MobilityScore[BISHOP];
+    }
+
+    return score;
 }
 
 }

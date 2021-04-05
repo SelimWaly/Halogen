@@ -66,21 +66,33 @@ namespace EvalNet
 		TEST_METHOD(White)
 		{
 			Position position;
-			position.InitialiseFromFen("k1n5/8/8/8/8/8/8/K2R4 w - - 0 1");
-
-			int value = 100;
-			TempoAdjustment(value, position);
-			Assert::AreEqual(110, value);
+			position.InitialiseFromFen("k1n5/8/8/8/8/8/8/K2R4 w - - 0 1");		
+			Assert::AreEqual(10, TempoAdjustment(position));
 		}
 
 		TEST_METHOD(Black)
 		{
 			Position position;
 			position.InitialiseFromFen("k7/8/8/8/8/8/8/K2R4 b - - 0 1");
+			Assert::AreEqual(-10, TempoAdjustment(position));
+		}
+	};
 
-			int value = 100;
-			TempoAdjustment(value, position);
-			Assert::AreEqual(90, value);
+	TEST_CLASS(mobilityAdjustment)
+	{
+	public:
+		mobilityAdjustment()
+		{
+			ZobristInit();
+			BBInit();
+		}
+
+		TEST_METHOD(Position1)
+		{
+			Position position;
+			position.InitialiseFromFen("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - ");
+
+			Assert::AreEqual(4, MobilityAdjustment(position));
 		}
 	};
 

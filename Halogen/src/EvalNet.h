@@ -10,7 +10,8 @@ int EvaluatePositionNet(const Position& position, EvalCacheTable& evalTable);
 
 namespace UnitTestEvalNet
 {
-	void NoPawnAdjustment(int& eval, const Position& position);
-	void TempoAdjustment(int& eval, const Position& position);
+    int TempoAdjustment(const Position& position);
+    void NoPawnAdjustment(int& eval, const Position& position);
+	int MobilityAdjustment(const Position& position);
 }
 
