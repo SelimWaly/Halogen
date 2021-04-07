@@ -5,8 +5,8 @@ using namespace::std;
 
 void PerftSuite();
 void PrintVersion();
-uint64_t PerftDivide(unsigned int depth, Position& position);
-uint64_t Perft(unsigned int depth, Position& position);
+uint64_t PerftDivide(int depth, Position& position);
+uint64_t Perft(int depth, Position& position);
 void Bench(int depth = 16);
 
 string version = "10.7";
@@ -376,8 +376,8 @@ void PerftSuite()
 {
 	ifstream infile("perftsuite.txt");
 
-	unsigned int Perfts = 0;
-	unsigned int Correct = 0;
+	int Perfts = 0;
+	int Correct = 0;
 	double Totalnodes = 0;
 	Position position;
 	string line;
@@ -418,10 +418,10 @@ void PerftSuite()
 
 	cout << "\n\nCompleted perft with: " << Correct << "/" << Perfts << " correct";
 	cout << "\nTotal nodes: " << (Totalnodes) << " in " << (elapsed_ms / 1000) << "s";
-	cout << "\nNodes per second: " << static_cast<unsigned int>((Totalnodes / elapsed_ms) * 1000);
+	cout << "\nNodes per second: " << static_cast<int>((Totalnodes / elapsed_ms) * 1000);
 }
 
-uint64_t PerftDivide(unsigned int depth, Position& position)
+uint64_t PerftDivide(int depth, Position& position)
 {
 	clock_t before = clock();
 
@@ -444,11 +444,11 @@ uint64_t PerftDivide(unsigned int depth, Position& position)
 	double elapsed_ms = (double(after) - double(before)) / CLOCKS_PER_SEC * 1000;
 
 	cout << "\nNodes searched: " << (nodeCount) << " in " << (elapsed_ms / 1000) << " seconds ";
-	cout << "(" << static_cast<unsigned int>((nodeCount / elapsed_ms) * 1000) << " nps)" << endl;
+	cout << "(" << static_cast<int>((nodeCount / elapsed_ms) * 1000) << " nps)" << endl;
 	return nodeCount;
 }
 
-uint64_t Perft(unsigned int depth, Position& position)
+uint64_t Perft(int depth, Position& position)
 {
 	if (depth == 0)
 		return 1;	//if perftdivide is called with 1 this is necesary

@@ -207,7 +207,7 @@ void Position::Print() const
 
 	for (int i = 0; i < N_SQUARES; i++)
 	{
-		unsigned int square = GetPosition(GetFile(i), 7 - GetRank(i));		//7- to flip on the y axis and do rank 8, 7 ...
+		int square = GetPosition(GetFile(i), 7 - GetRank(i));		//7- to flip on the y axis and do rank 8, 7 ...
 
 		if (GetFile(square) == FILE_A)
 		{

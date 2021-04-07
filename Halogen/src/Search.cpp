@@ -44,17 +44,17 @@ int matedIn(int distanceFromRoot);
 int mateIn(int distanceFromRoot);
 int TBLossIn(int distanceFromRoot);
 int TBWinIn(int distanceFromRoot);
-unsigned int ProbeTBRoot(const Position& position);
-unsigned int ProbeTBSearch(const Position& position);
-SearchResult UseSearchTBScore(unsigned int result, int distanceFromRoot);
-Move GetTBMove(unsigned int result);
+int ProbeTBRoot(const Position& position);
+int ProbeTBSearch(const Position& position);
+SearchResult UseSearchTBScore(int result, int distanceFromRoot);
+Move GetTBMove(int result);
 
-void SearchPosition(Position position, ThreadSharedData& sharedData, unsigned int threadID);
-SearchResult AspirationWindowSearch(Position& position, int depth, int prevScore, SearchData& locals, ThreadSharedData& sharedData, unsigned int threadID);
-SearchResult NegaScout(Position& position, unsigned int initialDepth, int depthRemaining, int alpha, int beta, int colour, unsigned int distanceFromRoot, bool allowedNull, SearchData& locals, ThreadSharedData& sharedData);
-void UpdateAlpha(int Score, int& a, const Move& move, unsigned int distanceFromRoot, SearchData& locals);
+void SearchPosition(Position position, ThreadSharedData& sharedData, int threadID);
+SearchResult AspirationWindowSearch(Position& position, int depth, int prevScore, SearchData& locals, ThreadSharedData& sharedData, int threadID);
+SearchResult NegaScout(Position& position, int initialDepth, int depthRemaining, int alpha, int beta, int colour, int distanceFromRoot, bool allowedNull, SearchData& locals, ThreadSharedData& sharedData);
+void UpdateAlpha(int Score, int& a, const Move& move, int distanceFromRoot, SearchData& locals);
 void UpdateScore(int newScore, int& Score, Move& bestMove, const Move& move);
-SearchResult Quiescence(Position& position, unsigned int initialDepth, int alpha, int beta, int colour, unsigned int distanceFromRoot, int depthRemaining, SearchData& locals, ThreadSharedData& sharedData);
+SearchResult Quiescence(Position& position, int initialDepth, int alpha, int beta, int colour, int distanceFromRoot, int depthRemaining, SearchData& locals, ThreadSharedData& sharedData);
 
 void InitSearch();
 
@@ -67,7 +67,7 @@ uint64_t SearchThread(Position position, SearchParameters parameters, const Sear
 		&& position.GetCanCastleWhiteQueenside() == false
 		&& position.GetCanCastleBlackQueenside() == false)
 	{
-		unsigned int result = ProbeTBRoot(position);
+		int result = ProbeTBRoot(position);
 		if (result != TB_RESULT_FAILED)
 		{
 			PrintBestMove(GetTBMove(result));
@@ -124,7 +124,7 @@ void PrintBestMove(Move Best)
 	std::cout << std::endl;
 }
 
-void SearchPosition(Position position, ThreadSharedData& sharedData, unsigned int threadID)
+void SearchPosition(Position position, ThreadSharedData& sharedData, int threadID)
 {
 	int alpha = LowINF;
 	int beta = HighINF;
@@ -152,7 +152,7 @@ void SearchPosition(Position position, ThreadSharedData& sharedData, unsigned in
 	}
 }
 
-SearchResult AspirationWindowSearch(Position& position, int depth, int prevScore, SearchData& locals, ThreadSharedData& sharedData, unsigned int threadID)
+SearchResult AspirationWindowSearch(Position& position, int depth, int prevScore, SearchData& locals, ThreadSharedData& sharedData, int threadID)
 {
 	int delta = Aspiration_window;
 
@@ -188,7 +188,7 @@ SearchResult AspirationWindowSearch(Position& position, int depth, int prevScore
 	return search;
 }
 
-SearchResult NegaScout(Position& position, unsigned int initialDepth, int depthRemaining, int alpha, int beta, int colour, unsigned int distanceFromRoot, bool allowedNull, SearchData& locals, ThreadSharedData& sharedData)
+SearchResult NegaScout(Position& position, int initialDepth, int depthRemaining, int alpha, int beta, int colour, int distanceFromRoot, bool allowedNull, SearchData& locals, ThreadSharedData& sharedData)
 {
 	position.ReportDepth(distanceFromRoot);
 
@@ -215,7 +215,7 @@ SearchResult NegaScout(Position& position, unsigned int initialDepth, int depthR
 		&& position.GetCanCastleBlackQueenside() == false 
 		&& GetBitCount(position.GetAllPieces()) <= TB_LARGEST )
 	{
-		unsigned int result = ProbeTBSearch(position);
+		int result = ProbeTBSearch(position);
 		if (result != TB_RESULT_FAILED)
 		{
 			locals.AddTbHit();
@@ -273,7 +273,7 @@ SearchResult NegaScout(Position& position, unsigned int initialDepth, int depthR
 	//Null move pruning
 	if (AllowedNull(allowedNull, position, beta, alpha, InCheck) && (staticScore > beta))
 	{
-		unsigned int reduction = Null_constant + depthRemaining / Null_depth_quotent + std::min(3, (staticScore - beta) / Null_beta_quotent);
+		int reduction = Null_constant + depthRemaining / Null_depth_quotent + std::min(3, (staticScore - beta) / Null_beta_quotent);
 
 		position.ApplyNullMove();
 		int score = -NegaScout(position, initialDepth, depthRemaining - reduction - 1, -beta, -beta + 1, -colour, distanceFromRoot + 1, false, locals, sharedData).GetScore();
@@ -387,7 +387,7 @@ SearchResult NegaScout(Position& position, unsigned int initialDepth, int depthR
 	return SearchResult(Score, bestMove);
 }
 
-unsigned int ProbeTBRoot(const Position& position)
+int ProbeTBRoot(const Position& position)
 {
 	return tb_probe_root(position.GetWhitePieces(), position.GetBlackPieces(),
 		position.GetPieceBB(WHITE_KING) | position.GetPieceBB(BLACK_KING),
@@ -402,7 +402,7 @@ unsigned int ProbeTBRoot(const Position& position)
 		NULL);
 }
 
-unsigned int ProbeTBSearch(const Position& position)
+int ProbeTBSearch(const Position& position)
 {
 	return tb_probe_wdl(position.GetWhitePieces(), position.GetBlackPieces(),
 		position.GetPieceBB(WHITE_KING) | position.GetPieceBB(BLACK_KING),
@@ -415,7 +415,7 @@ unsigned int ProbeTBSearch(const Position& position)
 		position.GetTurn());
 }
 
-SearchResult UseSearchTBScore(unsigned int result, int distanceFromRoot)
+SearchResult UseSearchTBScore(int result, int distanceFromRoot)
 {
 	int score = -1;
 
@@ -435,7 +435,7 @@ SearchResult UseSearchTBScore(unsigned int result, int distanceFromRoot)
 	return score;
 }
 
-Move GetTBMove(unsigned int result)
+Move GetTBMove(int result)
 {
 	int flag = -1;
 
@@ -455,7 +455,7 @@ Move GetTBMove(unsigned int result)
 	return Move(static_cast<Square>(TB_GET_FROM(result)), static_cast<Square>(TB_GET_TO(result)), static_cast<MoveFlag>(flag));
 }
 
-void UpdateAlpha(int Score, int& a, const Move& move, unsigned int distanceFromRoot, SearchData& locals)
+void UpdateAlpha(int Score, int& a, const Move& move, int distanceFromRoot, SearchData& locals)
 {
 	if (Score > a)
 	{
@@ -608,7 +608,7 @@ int TBWinIn(int distanceFromRoot)
 	return TB_WIN_SCORE - distanceFromRoot;
 }
 
-SearchResult Quiescence(Position& position, unsigned int initialDepth, int alpha, int beta, int colour, unsigned int distanceFromRoot, int depthRemaining, SearchData& locals, ThreadSharedData& sharedData)
+SearchResult Quiescence(Position& position, int initialDepth, int alpha, int beta, int colour, int distanceFromRoot, int depthRemaining, SearchData& locals, ThreadSharedData& sharedData)
 {
 	position.ReportDepth(distanceFromRoot);
 

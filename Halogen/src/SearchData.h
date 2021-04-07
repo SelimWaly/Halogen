@@ -95,10 +95,10 @@ public:
 	ThreadSharedData(const SearchLimits& limits, const SearchParameters& parameters, bool NoOutput = false);
 
 	Move GetBestMove() const;
-	unsigned int GetDepth() const;
-	bool ThreadAbort(unsigned int initialDepth) const;
-	void ReportResult(unsigned int depth, double Time, int score, int alpha, int beta, const Position& position, Move move, const SearchData& locals);
-	void ReportWantsToStop(unsigned int threadID);
+	int GetDepth() const;
+	bool ThreadAbort(int initialDepth) const;
+	void ReportResult(int depth, double Time, int score, int alpha, int beta, const Position& position, Move move, const SearchData& locals);
+	void ReportWantsToStop(int threadID);
 	int GetAspirationScore() const;
 	int GetMultiPVSetting() const { return param.multiPV; };
 	int GetMultiPVCount() const;
@@ -107,14 +107,14 @@ public:
 	uint64_t getTBHits() const;
 	uint64_t getNodes() const;
 
-	SearchData& GetData(unsigned int threadID);
+	SearchData& GetData(int threadID);
 
 private:
-	void PrintSearchInfo(unsigned int depth, double Time, bool isCheckmate, int score, int alpha, int beta, const Position& position, const Move& move, const SearchData& locals) const;
+	void PrintSearchInfo(int depth, double Time, bool isCheckmate, int score, int alpha, int beta, const Position& position, const Move& move, const SearchData& locals) const;
 	bool MultiPVExcludeMoveUnlocked(Move move) const;
 
 	mutable std::mutex ioMutex;
-	unsigned int threadDepthCompleted = 0;			//The depth that has been completed. When the first thread finishes a depth it increments this. All other threads should stop searching that depth
+	int threadDepthCompleted = 0;			//The depth that has been completed. When the first thread finishes a depth it increments this. All other threads should stop searching that depth
 	Move currentBestMove;							//Whoever finishes first gets to update this as long as they searched deeper than threadDepth
 	int prevScore = 0;								//if threads abandon the search, we need to know what the score was in order to set new alpha/beta bounds
 	int lowestAlpha = 0;

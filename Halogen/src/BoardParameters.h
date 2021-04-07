@@ -8,8 +8,8 @@ struct BoardParameterData
 	Square m_CaptureSquare = N_SQUARES;
 	Pieces m_CapturePiece = N_PIECES;
 	Square m_EnPassant = N_SQUARES;
-	unsigned int m_FiftyMoveCount = 0;
-	unsigned int m_TurnCount = 1;
+	int m_FiftyMoveCount = 0;
+	int m_TurnCount = 1;
 
 	bool m_HasCastledWhite = false;
 	bool m_HasCastledBlack = false;
@@ -32,7 +32,7 @@ public:
 	BoardParameters& operator=(const BoardParameters&) = default;
 	BoardParameters& operator=(BoardParameters&&) = default;
 
-	unsigned int GetTurnCount() const { return Current->m_TurnCount; }
+	int GetTurnCount() const { return Current->m_TurnCount; }
 	Players GetTurn() const { return Current->m_CurrentTurn; }
 	bool GetHasCastledWhite() const { return Current->m_HasCastledWhite; }
 	bool GetHasCastledBlack() const { return Current->m_HasCastledBlack; }
@@ -43,9 +43,9 @@ public:
 	Square GetEnPassant() const { return Current->m_EnPassant; }
 	Square GetCaptureSquare() const { return Current->m_CaptureSquare; }
 	Pieces GetCapturePiece() const { return Current->m_CapturePiece; }
-	unsigned int GetFiftyMoveCount() const { return Current->m_FiftyMoveCount; }
+	int GetFiftyMoveCount() const { return Current->m_FiftyMoveCount; }
 
-	void SetTurnCount(unsigned int val) { Current->m_TurnCount = val; }
+	void SetTurnCount(int val) { Current->m_TurnCount = val; }
 	void SetTurn(Players val) { Current->m_CurrentTurn = val; }
 	void SetHasCastledWhite(bool val) { Current->m_HasCastledWhite = val; }
 	void SetHasCastledBlack(bool val) { Current->m_HasCastledBlack = val; }
@@ -56,7 +56,7 @@ public:
 	void SetEnPassant(Square val) { Current->m_EnPassant = val; }
 	void SetCaptureSquare(Square val) { Current->m_CaptureSquare = val; }
 	void SetCapturePiece(Pieces val) { Current->m_CapturePiece = val; }
-	void SetFiftyMoveCount(unsigned int val) { Current->m_FiftyMoveCount = val; }
+	void SetFiftyMoveCount(int val) { Current->m_FiftyMoveCount = val; }
 
 protected:
 
@@ -78,7 +78,7 @@ protected:
 	void Reset50Move() { SetFiftyMoveCount(0); }
 
 	//The only function like this, because we need to be able to do this when detecting 50 move repititions
-	unsigned int GetPreviousFiftyMove(unsigned int index) const { return PreviousParameters.at(index).m_FiftyMoveCount; }
+	int GetPreviousFiftyMove(int index) const { return PreviousParameters.at(index).m_FiftyMoveCount; }
 
 	void InitParameters();
 

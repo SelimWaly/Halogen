@@ -3,7 +3,7 @@
 #include "BitBoardDefine.h"
 #include <climits>
 
-constexpr unsigned int HALF_MOVE_MODULO = 16;
+constexpr int HALF_MOVE_MODULO = 16;
 constexpr size_t BucketSize = 4;
 
 enum class EntryType : char {
@@ -20,7 +20,7 @@ public:
 	TTEntry();
 	TTEntry(Move best, uint64_t ZobristKey, int Score, int Depth, int currentTurnCount, int distanceFromRoot, EntryType Cutoff);
 
-	bool IsAncient(unsigned int currentTurnCount, unsigned int distanceFromRoot) const { return halfmove != static_cast<char>((currentTurnCount - distanceFromRoot) % (HALF_MOVE_MODULO)); }
+	bool IsAncient(int currentTurnCount, int distanceFromRoot) const { return halfmove != static_cast<char>((currentTurnCount - distanceFromRoot) % (HALF_MOVE_MODULO)); }
 
 	void SetHalfMove(int currentTurnCount, int distanceFromRoot) { halfmove = CalculateAge(currentTurnCount, distanceFromRoot); }	//halfmove is from current position, distanceFromRoot adjusts this to get what the halfmove was at the root of the search
 	void MateScoreAdjustment(int distanceFromRoot);

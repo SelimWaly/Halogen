@@ -21,18 +21,18 @@ Move ThreadSharedData::GetBestMove() const
 	return currentBestMove;
 }
 
-unsigned int ThreadSharedData::GetDepth() const
+int ThreadSharedData::GetDepth() const
 {
 	std::scoped_lock lock (ioMutex);
 	return threadDepthCompleted + 1;
 }
 
-bool ThreadSharedData::ThreadAbort(unsigned int initialDepth) const
+bool ThreadSharedData::ThreadAbort(int initialDepth) const
 {
 	return initialDepth <= threadDepthCompleted;
 }
 
-void ThreadSharedData::ReportResult(unsigned int depth, double Time, int score, int alpha, int beta, const Position& position, Move move, const SearchData& locals)
+void ThreadSharedData::ReportResult(int depth, double Time, int score, int alpha, int beta, const Position& position, Move move, const SearchData& locals)
 {
 	std::scoped_lock lock(ioMutex);
 
@@ -71,12 +71,12 @@ void ThreadSharedData::ReportResult(unsigned int depth, double Time, int score, 
 	}
 }
 
-void ThreadSharedData::ReportWantsToStop(unsigned int threadID)
+void ThreadSharedData::ReportWantsToStop(int threadID)
 {
 	std::scoped_lock lock(ioMutex);
 	ThreadWantsToStop[threadID] = true;
 
-	for (unsigned int i = 0; i < ThreadWantsToStop.size(); i++)
+	for (int i = 0; i < ThreadWantsToStop.size(); i++)
 	{
 		if (ThreadWantsToStop[i] == false)
 			return;
@@ -120,13 +120,13 @@ uint64_t ThreadSharedData::getNodes() const
 		[](uint64_t sum, const SearchData& data) { return sum + data.nodes; });
 }
 
-SearchData& ThreadSharedData::GetData(unsigned int threadID)
+SearchData& ThreadSharedData::GetData(int threadID)
 {
 	assert(threadID < threadlocalData.size());
 	return threadlocalData[threadID];
 }
 
-void ThreadSharedData::PrintSearchInfo(unsigned int depth, double Time, bool isCheckmate, int score, int alpha, int beta, const Position& position, const Move& move, const SearchData& locals) const
+void ThreadSharedData::PrintSearchInfo(int depth, double Time, bool isCheckmate, int score, int alpha, int beta, const Position& position, const Move& move, const SearchData& locals) const
 {
 	/*
 	Here we avoid excessive use of std::cout and instead append to a string in order

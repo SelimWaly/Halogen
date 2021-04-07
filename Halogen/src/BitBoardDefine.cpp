@@ -34,7 +34,7 @@ void BBInit()
 	InitSliderAttacks(RookTable, RookAttacksMagic, RSteps);
 }
 
-char PieceToChar(unsigned int piece)
+char PieceToChar(int piece)
 {
 	assert(piece <= N_PIECES);
 
@@ -42,7 +42,7 @@ char PieceToChar(unsigned int piece)
 	return PieceChar[piece];
 }
 
-unsigned int Piece(unsigned int piecetype, unsigned int colour)
+int Piece(int piecetype, int colour)
 {
 	assert(piecetype < N_PIECE_TYPES);
 	assert(colour < N_PLAYERS);
@@ -66,7 +66,7 @@ Square GetPosition(File file, Rank rank)
 	return static_cast<Square>(rank * 8 + file);
 }
 
-unsigned int GetPosition(unsigned int file, unsigned int rank)
+int GetPosition(int file, int rank)
 {
 	assert(file < N_FILES);
 	assert(file < N_RANKS);
@@ -85,7 +85,7 @@ int GetBitCount(uint64_t bb)
 #endif
 }
 
-unsigned int AlgebraicToPos(const std::string &str)
+int AlgebraicToPos(const std::string &str)
 {
 	if (str == "-")
 		return N_SQUARES;
@@ -95,7 +95,7 @@ unsigned int AlgebraicToPos(const std::string &str)
 	return (str[0] - 97) + (str[1] - 49) * 8;		
 }
 
-unsigned int ColourOfPiece(unsigned int piece)
+int ColourOfPiece(int piece)
 {
 	assert(piece < N_PIECES);
 
@@ -142,8 +142,8 @@ Magic RookTable[64];
 // Helper function that returns a bitboard with the landing square of
 // the step, or an empty bitboard if the step would go outside the board
 uint64_t LandingSquareBB(const int sq, const int step) {
-	const unsigned int to = sq + step;
-	return (uint64_t)(to <= SQ_H8 && std::max(AbsFileDiff(sq, to), AbsRankDiff(sq, to)) <= 2) << (to & SQ_H8);
+	const int to = sq + step;
+	return (uint64_t)(to <= SQ_H8 && to >= SQ_A1 && std::max(AbsFileDiff(sq, to), AbsRankDiff(sq, to)) <= 2) << (to & SQ_H8);
 }
 
 // Helper function that makes a slider attack bitboard

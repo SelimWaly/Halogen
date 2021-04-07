@@ -107,7 +107,7 @@ uint64_t PinnedMask(const Position& position)
 
 	while (possiblePins != 0)
 	{
-		unsigned int sq = LSBpop(possiblePins);
+		int sq = LSBpop(possiblePins);
 
 		if (!mayMove(king, sq, maskAll))	//if you can't move from the square to the king, it can't be pinned
 			continue;
@@ -476,7 +476,7 @@ bool IsSquareThreatened(const Position& position, Square square, Players colour)
 	uint64_t queen = position.GetPieceBB(QUEEN, !colour) & QueenAttacks[square];
 	while (queen != 0)
 	{
-		unsigned int start = LSBpop(queen);
+		int start = LSBpop(queen);
 		if (mayMove(start, square, Pieces))
 			return true;
 	}
@@ -484,7 +484,7 @@ bool IsSquareThreatened(const Position& position, Square square, Players colour)
 	uint64_t bishops = position.GetPieceBB(BISHOP, !colour) & BishopAttacks[square];
 	while (bishops != 0)
 	{
-		unsigned int start = LSBpop(bishops);
+		int start = LSBpop(bishops);
 		if (mayMove(start, square, Pieces))
 			return true;
 	}
@@ -492,7 +492,7 @@ bool IsSquareThreatened(const Position& position, Square square, Players colour)
 	uint64_t rook = position.GetPieceBB(ROOK, !colour) & RookAttacks[square];
 	while (rook != 0)
 	{
-		unsigned int start = LSBpop(rook);
+		int start = LSBpop(rook);
 		if (mayMove(start, square, Pieces))
 			return true;
 	}
@@ -523,7 +523,7 @@ uint64_t GetThreats(const Position& position, Square square, Players colour)
 	uint64_t queen = position.GetPieceBB(QUEEN, !colour) & QueenAttacks[square];
 	while (queen != 0)
 	{
-		unsigned int start = LSBpop(queen);
+		int start = LSBpop(queen);
 		if (mayMove(start, square, Pieces))
 			threats |= SquareBB[start];
 	}
@@ -531,7 +531,7 @@ uint64_t GetThreats(const Position& position, Square square, Players colour)
 	uint64_t bishops = position.GetPieceBB(BISHOP, !colour) & BishopAttacks[square];
 	while (bishops != 0)
 	{
-		unsigned int start = LSBpop(bishops);
+		int start = LSBpop(bishops);
 		if (mayMove(start, square, Pieces))
 			threats |= SquareBB[start];
 	}
@@ -539,7 +539,7 @@ uint64_t GetThreats(const Position& position, Square square, Players colour)
 	uint64_t rook = position.GetPieceBB(ROOK, !colour) & RookAttacks[square];
 	while (rook != 0)
 	{
-		unsigned int start = LSBpop(rook);
+		int start = LSBpop(rook);
 		if (mayMove(start, square, Pieces))
 			threats |= SquareBB[start];
 	}
