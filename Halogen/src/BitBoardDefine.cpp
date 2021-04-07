@@ -102,6 +102,16 @@ unsigned int ColourOfPiece(unsigned int piece)
 	return piece / N_PIECE_TYPES;
 }
 
+void FiftyMoveScoreAdjustment(int& eval, int fiftyMove)
+{
+	eval = eval * (100 - fiftyMove) / 100;
+}
+
+void FiftyMoveScoreAdjustmentReverse(int& eval, int fiftyMove)
+{
+	eval = eval * 100 / (100 - fiftyMove);
+}
+
 int LSBpop(uint64_t &bb)
 {
 	assert(bb != 0);

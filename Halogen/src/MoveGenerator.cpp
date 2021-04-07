@@ -277,7 +277,7 @@ void MoveGenerator::OrderMoves(std::vector<ExtendedMove>& moves)
 
 Move GetHashMove(const Position& position, int depthRemaining, int distanceFromRoot)
 {
-	TTEntry hash = tTable.GetEntry(position.GetZobristKey(), distanceFromRoot);
+	TTEntry hash = tTable.GetEntry(position.GetZobristKey(), distanceFromRoot, 0);
 
 	if (CheckEntry(hash, position.GetZobristKey(), depthRemaining))
 	{
@@ -290,7 +290,7 @@ Move GetHashMove(const Position& position, int depthRemaining, int distanceFromR
 
 Move GetHashMove(const Position& position, int distanceFromRoot)
 {
-	TTEntry hash = tTable.GetEntry(position.GetZobristKey(), distanceFromRoot);
+	TTEntry hash = tTable.GetEntry(position.GetZobristKey(), distanceFromRoot, 0);
 
 	if (CheckEntry(hash, position.GetZobristKey()))
 	{

@@ -15,7 +15,7 @@ bool CheckEntry(const TTEntry& entry, uint64_t key)
 	return (entry.GetKey() == key);
 }
 
-void TranspositionTable::AddEntry(const Move& best, uint64_t ZobristKey, int Score, int Depth, int Turncount, int distanceFromRoot, EntryType Cutoff)
+void TranspositionTable::AddEntry(const Move& best, uint64_t ZobristKey, int Score, int Depth, int Turncount, int distanceFromRoot, int fiftyMove, EntryType Cutoff)
 {
 	size_t hash = HashFunction(ZobristKey);
 
@@ -23,6 +23,8 @@ void TranspositionTable::AddEntry(const Move& best, uint64_t ZobristKey, int Sco
 		Score += distanceFromRoot;
 	if (Score < -9000)
 		Score -= distanceFromRoot;
+
+	FiftyMoveScoreAdjustmentReverse(Score, fiftyMove);
 
 	for (auto& entry : table[hash].entry)
 	{
@@ -45,7 +47,7 @@ void TranspositionTable::AddEntry(const Move& best, uint64_t ZobristKey, int Sco
 	table[hash].entry[std::distance(scores.begin(), std::min_element(scores.begin(), scores.end()))] = TTEntry(best, ZobristKey, Score, Depth, Turncount, distanceFromRoot, Cutoff);
 }
 
-TTEntry TranspositionTable::GetEntry(uint64_t key, int distanceFromRoot) const
+TTEntry TranspositionTable::GetEntry(uint64_t key, int distanceFromRoot, int fiftyMove) const
 {
 	size_t index = HashFunction(key);
 
@@ -53,7 +55,7 @@ TTEntry TranspositionTable::GetEntry(uint64_t key, int distanceFromRoot) const
 	{
 		if (entry.GetKey() == key)
 		{
-			entry.MateScoreAdjustment(distanceFromRoot);
+			entry.ScoreAdjustment(distanceFromRoot, fiftyMove);
 			return entry;
 		}
 	}

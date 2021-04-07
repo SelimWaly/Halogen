@@ -154,6 +154,9 @@ unsigned int GetPosition(unsigned int file, unsigned int rank);
 unsigned int AlgebraicToPos(const std::string& str);
 unsigned int ColourOfPiece(unsigned int piece);
 
+void FiftyMoveScoreAdjustment(int& eval, int fiftyMove);
+void FiftyMoveScoreAdjustmentReverse(int& eval, int fiftyMove);
+
 constexpr PieceTypes GetPieceType(Pieces piece)
 {
 	return static_cast<PieceTypes>(piece % N_PIECE_TYPES);

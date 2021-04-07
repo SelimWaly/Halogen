@@ -32,7 +32,7 @@ bool IsFutile(Move move, int beta, int alpha, Position & position, bool IsInChec
 bool AllowedNull(bool allowedNull, const Position& position, int beta, int alpha, bool InCheck);
 bool IsEndGame(const Position& position);
 bool IsPV(int beta, int alpha);
-void AddScoreToTable(int Score, int alphaOriginal, const Position& position, int depthRemaining, int distanceFromRoot, int beta, Move bestMove);
+void AddScoreToTable(int Score, int alphaOriginal, const Position& position, int depthRemaining, int distanceFromRoot, int beta, int fiftyMove, Move bestMove);
 void UpdateBounds(const TTEntry& entry, int& alpha, int& beta);
 int TerminalScore(const Position& position, int distanceFromRoot);
 int extension(const Position & position, int alpha, int beta);
@@ -246,7 +246,7 @@ SearchResult NegaScout(Position& position, unsigned int initialDepth, int depthR
 	//Query the transpotition table
 	if (!IsPV(beta, alpha)) 
 	{
-		TTEntry entry = tTable.GetEntry(position.GetZobristKey(), distanceFromRoot);
+		TTEntry entry = tTable.GetEntry(position.GetZobristKey(), distanceFromRoot, position.GetFiftyMoveCount());
 		if (CheckEntry(entry, position.GetZobristKey(), depthRemaining))
 		{
 			tTable.ResetAge(position.GetZobristKey(), position.GetTurnCount(), distanceFromRoot);
@@ -381,8 +381,11 @@ SearchResult NegaScout(Position& position, unsigned int initialDepth, int depthR
 
 	Score = std::min(Score, MaxScore);
 
+	if (position.GetFiftyMoveCount() >= 100)
+		return Score;
+
 	if (!locals.limits.CheckTimeLimit() && !sharedData.ThreadAbort(initialDepth))
-		AddScoreToTable(Score, alpha, position, depthRemaining, distanceFromRoot, beta, bestMove);
+		AddScoreToTable(Score, alpha, position, depthRemaining, distanceFromRoot, beta, position.GetFiftyMoveCount(), bestMove);
 
 	return SearchResult(Score, bestMove);
 }
@@ -553,14 +556,14 @@ bool IsPV(int beta, int alpha)
 	return beta != alpha + 1;
 }
 
-void AddScoreToTable(int Score, int alphaOriginal, const Position& position, int depthRemaining, int distanceFromRoot, int beta, Move bestMove)
+void AddScoreToTable(int Score, int alphaOriginal, const Position& position, int depthRemaining, int distanceFromRoot, int beta, int fiftyMove, Move bestMove)
 {
 	if (Score <= alphaOriginal)
-		tTable.AddEntry(bestMove, position.GetZobristKey(), Score, depthRemaining, position.GetTurnCount(), distanceFromRoot, EntryType::UPPERBOUND);	//mate score adjustent is done inside this function
+		tTable.AddEntry(bestMove, position.GetZobristKey(), Score, depthRemaining, position.GetTurnCount(), distanceFromRoot, fiftyMove, EntryType::UPPERBOUND);	//mate score adjustent is done inside this function
 	else if (Score >= beta)
-		tTable.AddEntry(bestMove, position.GetZobristKey(), Score, depthRemaining, position.GetTurnCount(), distanceFromRoot, EntryType::LOWERBOUND);
+		tTable.AddEntry(bestMove, position.GetZobristKey(), Score, depthRemaining, position.GetTurnCount(), distanceFromRoot, fiftyMove, EntryType::LOWERBOUND);
 	else
-		tTable.AddEntry(bestMove, position.GetZobristKey(), Score, depthRemaining, position.GetTurnCount(), distanceFromRoot, EntryType::EXACT);
+		tTable.AddEntry(bestMove, position.GetZobristKey(), Score, depthRemaining, position.GetTurnCount(), distanceFromRoot, fiftyMove, EntryType::EXACT);
 }
 
 void UpdateBounds(const TTEntry& entry, int& alpha, int& beta)
