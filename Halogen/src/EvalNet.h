@@ -6,7 +6,7 @@
 #include <algorithm>
 
 bool DeadPosition(const Position& position);
-int EvaluatePositionNet(const Position& position, EvalCacheTable& evalTable);
+int EvaluatePositionNet(const Position& position, EvalCacheTable& evalTable, uint64_t nodes);
 
 namespace UnitTestEvalNet
 {

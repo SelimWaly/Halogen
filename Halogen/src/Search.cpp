@@ -265,7 +265,7 @@ SearchResult NegaScout(Position& position, unsigned int initialDepth, int depthR
 		return Quiescence(position, initialDepth, alpha, beta, colour, distanceFromRoot, depthRemaining, locals, sharedData);
 	}
 
-	int staticScore = colour * EvaluatePositionNet(position, locals.evalTable); 
+	int staticScore = colour * EvaluatePositionNet(position, locals.evalTable, locals.GetThreadNodes()); 
 
 	//Static null move pruning
 	if (depthRemaining <= SNMP_depth && staticScore - SNMP_coeff * depthRemaining >= beta && !InCheck && !IsPV(beta, alpha)) return beta;
@@ -620,7 +620,7 @@ SearchResult Quiescence(Position& position, unsigned int initialDepth, int alpha
 	if (sharedData.ThreadAbort(initialDepth)) return -1;				//Has this depth been finished by another thread?
 	if (DeadPosition(position)) return 0;								//Is this position a dead draw?
 
-	int staticScore = colour * EvaluatePositionNet(position, locals.evalTable);
+	int staticScore = colour * EvaluatePositionNet(position, locals.evalTable, locals.GetThreadNodes());
 	if (staticScore >= beta) return staticScore;
 	if (staticScore > alpha) alpha = staticScore;
 	

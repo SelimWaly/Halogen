@@ -2,7 +2,7 @@
 
 using namespace UnitTestEvalNet;
 
-int EvaluatePositionNet(const Position& position, EvalCacheTable& evalTable)
+int EvaluatePositionNet(const Position& position, EvalCacheTable& evalTable, uint64_t nodes)
 {
     int eval;
 
@@ -16,7 +16,7 @@ int EvaluatePositionNet(const Position& position, EvalCacheTable& evalTable)
         evalTable.AddEntry(position.GetZobristKey(), eval);
     }
 
-    return std::min(4000, std::max(-4000, eval));
+    return std::clamp<int>(eval + 1 - (nodes & 0b10), -4000, 4000);
 }
 
 bool DeadPosition(const Position& position)
