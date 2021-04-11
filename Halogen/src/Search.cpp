@@ -181,7 +181,7 @@ SearchResult NegaScout(Position& position, unsigned int initialDepth, int depthR
 	if (DeadPosition(position)) return 0;								//Is this position a dead draw?
 	if (CheckForRep(position, distanceFromRoot)							//Have we had a draw by repitition?
 		|| position.GetFiftyMoveCount() > 100)							//cannot use >= as it could currently be checkmate which would count as a win
-		return 8 - (locals.GetThreadNodes() & 0b1111);					//as in https://github.com/Luecx/Koivisto/commit/c8f01211c290a582b69e4299400b667a7731a9f7 with permission from Koivisto authors. 
+		return 1 - (locals.GetThreadNodes() & 2);						//as in https://github.com/Luecx/Koivisto/commit/c8f01211c290a582b69e4299400b667a7731a9f7 with permission from Koivisto authors. 
 	
 	int Score = LowINF;
 	int MaxScore = HighINF;
@@ -270,7 +270,7 @@ SearchResult NegaScout(Position& position, unsigned int initialDepth, int depthR
 	if (depthRemaining < SNMP_depth && staticScore - SNMP_coeff * depthRemaining >= beta && !InCheck && !IsPV(beta, alpha)) return beta;
 
 	//Null move pruning
-	if (AllowedNull(allowedNull, position, beta, alpha, InCheck) && (staticScore > beta))
+	if (AllowedNull(allowedNull, position, beta, alpha, InCheck) && (staticScore > beta) && depthRemaining >= 2)
 	{
 		unsigned int reduction = Null_constant + depthRemaining / Null_depth_quotent + std::min(3, (staticScore - beta) / Null_beta_quotent);
 
