@@ -9,27 +9,27 @@
 
 /*Tuneable search constants*/
 
-inline double LMR_constant = -1.61;
-inline double LMR_coeff = 1.04;
+inline double LMR_constant = -2.07;
+inline double LMR_coeff = 0.99;
 
-inline int Null_constant = 3;
-inline int Null_depth_quotent = 7;
-inline int Null_beta_quotent = 256;
+inline int Null_constant = 4;
+inline int Null_depth_quotent = 4;
+inline int Null_beta_quotent = 260;
 
 inline int Futility_constant = 84;
-inline int Futility_coeff = 49;
+inline int Futility_coeff = 63;
 inline int Futility_depth = 10;
 
-inline int Aspiration_window = 12;
+inline int Aspiration_window = 16;
 
-inline int Delta_margin = 210;
+inline int Delta_margin = 162;
 
-inline int SNMP_coeff = 82;
+inline int SNMP_coeff = 102;
 inline int SNMP_depth = 8;
 
-inline int LMP_constant = 6;
-inline int LMP_coeff = 8;
-inline int LMP_depth = 8;
+inline int LMP_constant = 9;
+inline int LMP_coeff = 5;
+inline int LMP_depth = 6;
 
 /*----------------*/
 
