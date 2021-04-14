@@ -31,7 +31,6 @@ class Move
 public:
 	Move();
 	Move(Square from, Square to, MoveFlag flag);
-	~Move();
 
 	Square GetFrom() const;
 	Square GetTo() const;
@@ -46,11 +45,6 @@ public:
 	bool operator==(const Move& rhs) const;
 
 	bool IsUninitialized() const;
-
-	void Reset();
-
-	//Move(uint16_t _data) { data = _data; }
-	//uint16_t GetData() { return data; }
 
 private:
 	void SetFrom(Square from);

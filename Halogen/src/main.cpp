@@ -1,6 +1,5 @@
 #include "Benchmark.h"
 #include "Search.h"
-#include <thread>
 
 using namespace::std; 
 
@@ -10,9 +9,7 @@ uint64_t PerftDivide(unsigned int depth, Position& position);
 uint64_t Perft(unsigned int depth, Position& position);
 void Bench(int depth = 16);
 
-string version = "9";  
-
-void TestSyzygy();
+string version = "10.9.4";
 
 int main(int argc, char* argv[])
 {
@@ -38,7 +35,14 @@ int main(int argc, char* argv[])
 		Line += " ";
 	}
 
-	while (Line != "" || getline(cin, Line))
+	/*Tuneable search constants*/
+
+	double timeIncCoeffA = 40.0;
+	double timeIncCoeffB = 30.0;
+
+	//---------------------------
+
+	while (!Line.empty() || getline(cin, Line))
 	{
 		istringstream iss(Line);
 		string token;
@@ -149,7 +153,7 @@ int main(int argc, char* argv[])
 					AllocatedTime = myTime / (movestogo + 1) * 3 / 2;	//repeating time control
 				else if (myInc != 0)
 					// use a greater proportion of remaining time as the game continues, so that we use it all up and get to just increment
-					AllocatedTime = myTime * (1 + position.GetTurnCount() / 40.0) / 16 + myInc;	//increment time control
+					AllocatedTime = myTime * (1 + position.GetTurnCount() / timeIncCoeffA) / timeIncCoeffB + myInc;	//increment time control
 				else
 					AllocatedTime = myTime / 20;						//sudden death time control
 
@@ -159,7 +163,7 @@ int main(int argc, char* argv[])
 			if (searchThread.joinable())
 				searchThread.join();
 
-			searchThread = thread([&position, &parameters, limits] {SearchThread(position, parameters, limits); });
+			searchThread = thread([=] {SearchThread(position, parameters, limits); });
 		}
 
 		else if (token == "setoption")
@@ -196,7 +200,6 @@ int main(int argc, char* argv[])
 				iss >> token;
 
 				tb_init(token.c_str());
-				TestSyzygy();
 			}
 
 			else if (token == "MultiPV")
@@ -241,18 +244,25 @@ int main(int argc, char* argv[])
 				Null_beta_quotent = stoi(token);
 			}
 
-			else if (token == "Futility_linear")
-			{
-				iss >> token; //'value'
-				iss >> token;
-				Futility_linear = stoi(token);
-			}
-
 			else if (token == "Futility_constant")
 			{
 				iss >> token; //'value'
 				iss >> token;
 				Futility_constant = stoi(token);
+			}
+
+			else if (token == "Futility_coeff")
+			{
+				iss >> token; //'value'
+				iss >> token;
+				Futility_coeff = stoi(token);
+			}
+
+			else if (token == "Futility_depth")
+			{
+				iss >> token; //'value'
+				iss >> token;
+				Futility_depth = stoi(token);
 			}
 
 			else if (token == "Aspiration_window")
@@ -269,6 +279,13 @@ int main(int argc, char* argv[])
 				Delta_margin = stoi(token);
 			}
 
+			else if (token == "SNMP_coeff")
+			{
+				iss >> token; //'value'
+				iss >> token;
+				SNMP_coeff = stoi(token);
+			}
+
 			else if (token == "SNMP_depth")
 			{
 				iss >> token; //'value'
@@ -276,11 +293,39 @@ int main(int argc, char* argv[])
 				SNMP_depth = stoi(token);
 			}
 
-			else if (token == "SNMP_coeff")
+			else if (token == "LMP_constant")
 			{
 				iss >> token; //'value'
 				iss >> token;
-				SNMP_coeff = stoi(token);
+				LMP_constant = stoi(token);
+			}
+
+			else if (token == "LMP_coeff")
+			{
+				iss >> token; //'value'
+				iss >> token;
+				LMP_coeff = stoi(token);
+			}
+
+			else if (token == "LMP_depth")
+			{
+				iss >> token; //'value'
+				iss >> token;
+				LMP_depth = stoi(token);
+			}
+
+			else if (token == "timeIncCoeffA")
+			{
+				iss >> token; //'value'
+				iss >> token;
+				timeIncCoeffA = stod(token);
+			}
+
+			else if (token == "timeIncCoeffB")
+			{
+				iss >> token; //'value'
+				iss >> token;
+				timeIncCoeffB = stod(token);
 			}
 		}
 
@@ -315,7 +360,7 @@ int main(int argc, char* argv[])
 		else if (token == "print") position.Print();
 		else cout << "Unknown command" << endl;
 
-		Line = "";
+		Line.clear();
 
 		if (argc != 1)	//Temporary fix to quit after a command line UCI argument is done
 			break;
@@ -334,8 +379,12 @@ void PrintVersion()
 #if defined(_WIN64) or defined(__x86_64__)
 	cout << " x64";
 
-	#if defined(USE_POPCNT)
+	#if defined(USE_POPCNT) && !defined(USE_PEXT)
 		cout << " POPCNT";
+	#endif 
+
+	#if defined(USE_PEXT)
+		cout << " PEXT";
 	#endif 
 
 	#if defined(USE_AVX2)
@@ -349,44 +398,6 @@ void PrintVersion()
 #else
 	cout << " UNKNOWN COMPILATION" << endl;
 #endif
-}
-
-void TestSyzygy()
-{
-#ifdef DEBUG
-	Position testPosition;
-	testPosition.InitialiseFromFen("8/6B1/8/8/B7/8/K1pk4/8 b - - 0 1");
-	unsigned int result = tb_probe_wdl(testPosition.GetWhitePieces(), testPosition.GetBlackPieces(),
-		testPosition.GetPieceBB(WHITE_KING) | testPosition.GetPieceBB(BLACK_KING),
-		testPosition.GetPieceBB(WHITE_QUEEN) | testPosition.GetPieceBB(BLACK_QUEEN),
-		testPosition.GetPieceBB(WHITE_ROOK) | testPosition.GetPieceBB(BLACK_ROOK),
-		testPosition.GetPieceBB(WHITE_BISHOP) | testPosition.GetPieceBB(BLACK_BISHOP),
-		testPosition.GetPieceBB(WHITE_KNIGHT) | testPosition.GetPieceBB(BLACK_KNIGHT),
-		testPosition.GetPieceBB(WHITE_PAWN) | testPosition.GetPieceBB(BLACK_PAWN),
-		testPosition.GetFiftyMoveCount(),
-		testPosition.CanCastleBlackKingside() * TB_CASTLING_k + testPosition.CanCastleBlackQueenside() * TB_CASTLING_q + testPosition.CanCastleWhiteKingside() * TB_CASTLING_K + testPosition.CanCastleWhiteQueenside() * TB_CASTLING_Q,
-		testPosition.GetEnPassant() <= SQ_H8 ? testPosition.GetEnPassant() : 0,
-		testPosition.GetTurn());
-	assert(result == TB_BLESSED_LOSS);
-
-	result = tb_probe_root(testPosition.GetWhitePieces(), testPosition.GetBlackPieces(),
-		testPosition.GetPieceBB(WHITE_KING) | testPosition.GetPieceBB(BLACK_KING),
-		testPosition.GetPieceBB(WHITE_QUEEN) | testPosition.GetPieceBB(BLACK_QUEEN),
-		testPosition.GetPieceBB(WHITE_ROOK) | testPosition.GetPieceBB(BLACK_ROOK),
-		testPosition.GetPieceBB(WHITE_BISHOP) | testPosition.GetPieceBB(BLACK_BISHOP),
-		testPosition.GetPieceBB(WHITE_KNIGHT) | testPosition.GetPieceBB(BLACK_KNIGHT),
-		testPosition.GetPieceBB(WHITE_PAWN) | testPosition.GetPieceBB(BLACK_PAWN),
-		testPosition.GetFiftyMoveCount(),
-		testPosition.CanCastleBlackKingside() * TB_CASTLING_k + testPosition.CanCastleBlackQueenside() * TB_CASTLING_q + testPosition.CanCastleWhiteKingside() * TB_CASTLING_K + testPosition.CanCastleWhiteQueenside() * TB_CASTLING_Q,
-		testPosition.GetEnPassant() <= SQ_H8 ? testPosition.GetEnPassant() : 0,
-		testPosition.GetTurn(),
-		NULL);
-
-	assert(TB_GET_WDL(result) == TB_BLESSED_LOSS);
-	assert(TB_GET_FROM(result) == SQ_C2);
-	assert(TB_GET_TO(result) == SQ_C1);
-	assert(TB_GET_PROMOTES(result) == TB_PROMOTES_KNIGHT);
-#endif 
 }
 
 void PerftSuite()
@@ -443,16 +454,16 @@ uint64_t PerftDivide(unsigned int depth, Position& position)
 	clock_t before = clock();
 
 	uint64_t nodeCount = 0;
-	vector<Move> moves;
+	MoveList moves;
 	LegalMoves(position, moves);
 
 	for (size_t i = 0; i < moves.size(); i++)
 	{
-		position.ApplyMove(moves.at(i));
+		position.ApplyMove(moves[i].move);
 		uint64_t ChildNodeCount = Perft(depth - 1, position);
 		position.RevertMove();
 
-		moves.at(i).Print();
+		moves[i].move.Print();
 		cout << ": " << ChildNodeCount << endl;
 		nodeCount += ChildNodeCount;
 	}
@@ -471,7 +482,7 @@ uint64_t Perft(unsigned int depth, Position& position)
 		return 1;	//if perftdivide is called with 1 this is necesary
 
 	uint64_t nodeCount = 0;
-	vector<Move> moves;
+	MoveList moves;
 	LegalMoves(position, moves);
 
 	/*for (int i = 0; i < UINT16_MAX; i++)
@@ -503,7 +514,7 @@ uint64_t Perft(unsigned int depth, Position& position)
 
 	for (size_t i = 0; i < moves.size(); i++)
 	{
-		position.ApplyMove(moves.at(i));
+		position.ApplyMove(moves[i].move);
 		nodeCount += Perft(depth - 1, position);
 		position.RevertMove();
 	}

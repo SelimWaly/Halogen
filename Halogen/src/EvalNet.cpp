@@ -1,13 +1,6 @@
 #include "EvalNet.h"
 
-int pieceValueVector[N_STAGES][N_PIECE_TYPES] = { {91, 532, 568, 715, 1279, 5000},
-                                                  {111, 339, 372, 638, 1301, 5000} };
-
-constexpr int TEMPO = 10;
-
-void NetworkScaleAdjustment(int& eval);
-void TempoAdjustment(int& eval, const Position& position);
-void NoPawnAdjustment(int& eval, const Position& position);
+using namespace UnitTestEvalNet;
 
 int EvaluatePositionNet(const Position& position, EvalCacheTable& evalTable)
 {
@@ -17,37 +10,13 @@ int EvaluatePositionNet(const Position& position, EvalCacheTable& evalTable)
     {
         eval = position.GetEvaluation();
 
-        NetworkScaleAdjustment(eval);
         NoPawnAdjustment(eval, position);
         TempoAdjustment(eval, position);
 
         evalTable.AddEntry(position.GetZobristKey(), eval);
     }
 
-    return std::min(4000, std::max(-4000, eval));
-}
-
-void TempoAdjustment(int& eval, const Position& position)
-{
-    eval += position.GetTurn() == WHITE ? TEMPO : -TEMPO;
-}
-
-void NoPawnAdjustment(int& eval, const Position& position)
-{
-    if (eval > 0 && position.GetPieceBB(PAWN, WHITE) == 0)
-        eval /= 2;
-    if (eval < 0 && position.GetPieceBB(PAWN, BLACK) == 0)
-        eval /= 2;
-}
-
-void NetworkScaleAdjustment(int& eval)
-{
-    eval = eval * 94 / 100;
-}
-
-int PieceValues(unsigned int Piece, GameStages GameStage)
-{
-    return pieceValueVector[GameStage][GetPieceType(static_cast<Pieces>(Piece))];
+    return std::min<int>(EVAL_MAX, std::max<int>(EVAL_MIN, eval));
 }
 
 bool DeadPosition(const Position& position)
@@ -83,6 +52,24 @@ bool DeadPosition(const Position& position)
     return false;
 }
 
+namespace UnitTestEvalNet
+{
+
+void TempoAdjustment(int& eval, const Position& position)
+{
+    constexpr static int TEMPO = 10;
+    eval += position.GetTurn() == WHITE ? TEMPO : -TEMPO;
+}
+
+void NoPawnAdjustment(int& eval, const Position& position)
+{
+    if (eval > 0 && position.GetPieceBB(PAWN, WHITE) == 0)
+        eval /= 2;
+    if (eval < 0 && position.GetPieceBB(PAWN, BLACK) == 0)
+        eval /= 2;
+}
+
+}
 
 
 

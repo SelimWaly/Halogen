@@ -1,13 +1,6 @@
 #include "BoardParameters.h"
 
-BoardParameters::BoardParameters()
-{
-	InitParameters();
-}
-
-BoardParameters::~BoardParameters()
-{
-}
+BoardParameters::~BoardParameters() = default;
 
 void BoardParameters::WhiteCastled()
 {
@@ -35,7 +28,7 @@ void BoardParameters::InitParameters()
 	Current = PreviousParameters.begin();
 }
 
-bool BoardParameters::InitialiseParametersFromFen(std::vector<std::string> fen)
+bool BoardParameters::InitialiseParametersFromFen(const std::vector<std::string> &fen)
 {
 	InitParameters();
 
@@ -112,23 +105,4 @@ void BoardParameters::UpdateCastleRights(Move move)
 	{
 		SetCanCastleBlackKingside(false);
 	}
-}
-
-BoardParameterData::BoardParameterData()
-{
-	m_CurrentTurn = WHITE;
-	m_WhiteKingCastle = false;
-	m_WhiteQueenCastle = false;
-	m_BlackKingCastle = false;
-	m_BlackQueenCastle = false;
-
-	m_EnPassant = N_SQUARES;
-	m_FiftyMoveCount = 0;
-	m_TurnCount = 1;
-
-	m_HasCastledWhite = false;
-	m_HasCastledBlack = false;
-
-	m_CaptureSquare = N_SQUARES;		
-	m_CapturePiece = N_PIECES;
 }

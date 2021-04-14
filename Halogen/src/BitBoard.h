@@ -2,17 +2,18 @@
 #include "BitBoardDefine.h"
 #include <vector>
 
-struct BitBoardData
-{
-	BitBoardData();
-	uint64_t m_Bitboard[N_PIECES];
-};
+typedef std::array<uint64_t, N_PIECES> BitBoardData;
 
 class BitBoard
 {
 public:
-	BitBoard();
+	BitBoard() = default;
 	virtual ~BitBoard() = 0;
+
+	BitBoard(const BitBoard&) = default;
+	BitBoard(BitBoard&&) = default; 
+	BitBoard& operator=(const BitBoard&) = default;
+	BitBoard& operator=(BitBoard&&) = default;
 
 	Pieces GetSquare(Square square) const;
 
@@ -30,18 +31,25 @@ public:
 
 	Square GetKing(Players colour) const;
 
+	template<PieceTypes type>
+	uint64_t GetPieceBB() const { return GetPieceBB(type, WHITE) | GetPieceBB(type, BLACK); }
+
 	void SetSquare(Square square, Pieces piece);
 	void ClearSquare(Square square);
 
 protected:
 	void ResetBoard();
-	bool InitialiseBoardFromFen(std::vector<std::string> fen);
+	bool InitialiseBoardFromFen(const std::vector<std::string> &fen);
 
 	void SaveBoard();
 	void RestorePreviousBoard();
 
 private:
+	void RecalculateWhiteBlackBoards();
+
+	uint64_t WhitePieces;
+	uint64_t BlackPieces;
+
 	std::vector<BitBoardData> previousBoards = { BitBoardData() };
-	std::vector<BitBoardData>::iterator Current = previousBoards.begin();
 };
 

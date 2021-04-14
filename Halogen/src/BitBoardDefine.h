@@ -145,13 +145,27 @@ enum GameStages
 	N_STAGES
 };
 
+enum Score
+{
+	HighINF = 30000,
+	LowINF = -30000,
+
+	MATED = -10000,
+	TB_LOSS_SCORE = -5000,
+	EVAL_MIN = -4000,
+	DRAW = 0,
+	EVAL_MAX = 4000,
+	TB_WIN_SCORE = 5000,
+	MATE = 10000
+};
+
 void BBInit();
+int GetBitCount(uint64_t bb);
 
 char PieceToChar(unsigned int piece);
 unsigned int Piece(unsigned int piecetype, unsigned int colour);
 unsigned int GetPosition(unsigned int file, unsigned int rank);
-unsigned int GetBitCount(uint64_t bb);
-unsigned int AlgebraicToPos(std::string str);
+unsigned int AlgebraicToPos(const std::string& str);
 unsigned int ColourOfPiece(unsigned int piece);
 
 constexpr PieceTypes GetPieceType(Pieces piece)

@@ -1,32 +1,16 @@
 #include "Search.h"
 
-/*Tuneable search constants*/
+int LMR_reduction[64][64];				//[depth][move number]
 
-double LMR_constant = -1.76;
-double LMR_coeff = 1.03;
+constexpr int LMPLimit[] = { 10, 17, 24, 31, 38, 45 };
 
-int Null_constant = 4;
-int Null_depth_quotent = 6;
-int Null_beta_quotent = 250;
-
-int Futility_linear = 25;
-int Futility_constant = 100;
-
-int Aspiration_window = 15;
-
-int Delta_margin = 200;
-
-int SNMP_depth = 7;
-int SNMP_coeff = 119;
-
-/*----------------*/
-
-constexpr int FutilityMaxDepth = 10;
-int FutilityMargins[FutilityMaxDepth];		//[depth]
-int LMR_reduction[64][64] = {};				//[depth][move number]
+//intentionally uses signed rather than unsigned
+//as size() will be compared to signed types
+template<class T, int N>
+constexpr int size(T(&)[N]) { return N; }
 
 void PrintBestMove(Move Best);
-bool UseTransposition(TTEntry& entry, int distanceFromRoot, int alpha, int beta);
+bool UseTransposition(const TTEntry& entry, int alpha, int beta);
 bool CheckForRep(const Position& position, int distanceFromRoot);
 bool IsFutile(Move move, int beta, int alpha, Position & position, bool IsInCheck);
 bool AllowedNull(bool allowedNull, const Position& position, int beta, int alpha, bool InCheck);
@@ -40,10 +24,10 @@ void AddKiller(Move move, int distanceFromRoot, std::vector<std::array<Move, 2>>
 void AddHistory(const MoveGenerator& gen, const Move& move, SearchData& locals, int depthRemaining);
 void UpdatePV(Move move, int distanceFromRoot, std::vector<std::vector<Move>>& PvTable);
 int Reduction(int depth, int i);
-int matedIn(int distanceFromRoot);
-int mateIn(int distanceFromRoot);
-int TBLossIn(int distanceFromRoot);
-int TBWinIn(int distanceFromRoot);
+constexpr int matedIn(int distanceFromRoot);
+constexpr int mateIn(int distanceFromRoot);
+constexpr int TBLossIn(int distanceFromRoot);
+constexpr int TBWinIn(int distanceFromRoot);
 unsigned int ProbeTBRoot(const Position& position);
 unsigned int ProbeTBSearch(const Position& position);
 SearchResult UseSearchTBScore(unsigned int result, int distanceFromRoot);
@@ -58,10 +42,14 @@ SearchResult Quiescence(Position& position, unsigned int initialDepth, int alpha
 
 void InitSearch();
 
-uint64_t SearchThread(const Position& position, const SearchParameters& parameters, const SearchLimits& limits, bool noOutput)
+uint64_t SearchThread(Position position, SearchParameters parameters, const SearchLimits& limits, bool noOutput)
 {
 	//Probe TB at root
-	if (GetBitCount(position.GetAllPieces()) <= TB_LARGEST)
+	if (GetBitCount(position.GetAllPieces()) <= TB_LARGEST 
+		&& position.GetCanCastleWhiteKingside() == false
+		&& position.GetCanCastleBlackKingside() == false
+		&& position.GetCanCastleWhiteQueenside() == false
+		&& position.GetCanCastleBlackQueenside() == false)
 	{
 		unsigned int result = ProbeTBRoot(position);
 		if (result != TB_RESULT_FAILED)
@@ -70,6 +58,11 @@ uint64_t SearchThread(const Position& position, const SearchParameters& paramete
 			return 0;
 		}
 	}
+
+	//Limit the MultiPV setting to be at most the number of legal moves
+	MoveList moves;
+	LegalMoves(position, moves);
+	parameters.multiPV = std::min<int>(parameters.multiPV, moves.size());
 
 	InitSearch();
 
@@ -93,11 +86,6 @@ uint64_t SearchThread(const Position& position, const SearchParameters& paramete
 void InitSearch()
 {
 	KeepSearching = true;
-
-	for (int i = 0; i < FutilityMaxDepth; i++)
-	{
-		FutilityMargins[i] = Futility_linear * i + Futility_constant;
-	}
 
 	for (int i = 0; i < 64; i++)
 	{
@@ -189,17 +177,22 @@ SearchResult NegaScout(Position& position, unsigned int initialDepth, int depthR
 	//See if we should abort the search
 	if (initialDepth > 1 && locals.limits.CheckTimeLimit()) return -1;	//Am I out of time?
 	if (sharedData.ThreadAbort(initialDepth)) return -1;				//Has this depth been finished by another thread?
+
 	if (DeadPosition(position)) return 0;								//Is this position a dead draw?
-	if (CheckForRep(position, distanceFromRoot)) return 0;				//Have we had a draw by repitition?
-	if (position.GetFiftyMoveCount() > 100) return 0;					//cannot use >= as it could currently be checkmate which would count as a win
+	if (CheckForRep(position, distanceFromRoot)							//Have we had a draw by repitition?
+		|| position.GetFiftyMoveCount() > 100)							//cannot use >= as it could currently be checkmate which would count as a win
+		return 8 - (locals.GetThreadNodes() & 0b1111);					//as in https://github.com/Luecx/Koivisto/commit/c8f01211c290a582b69e4299400b667a7731a9f7 with permission from Koivisto authors. 
 	
 	int Score = LowINF;
 	int MaxScore = HighINF;
 
 	//Probe TB in search
-	if (   distanceFromRoot > 0   
-		&& position.GetFiftyMoveCount() == 0 
-		&& GetBitCount(position.GetAllPieces()) <= TB_LARGEST)
+	if (position.GetFiftyMoveCount() == 0 
+		&& position.GetCanCastleWhiteKingside() == false
+		&& position.GetCanCastleBlackKingside() == false
+		&& position.GetCanCastleWhiteQueenside() == false
+		&& position.GetCanCastleBlackQueenside() == false 
+		&& GetBitCount(position.GetAllPieces()) <= TB_LARGEST )
 	{
 		unsigned int result = ProbeTBSearch(position);
 		if (result != TB_RESULT_FAILED)
@@ -214,7 +207,27 @@ SearchResult NegaScout(Position& position, unsigned int initialDepth, int depthR
 			if (probe.GetScore() <= TBLossIn(MAX_DEPTH) && probe.GetScore() <= alpha)
 				return probe;
 
-			if (IsPV(beta, alpha)) 
+			// Why update score ?
+			// Because in a PV node we want the returned score to be accurate and reflect the TB score.
+			// As such, we either set a cap for the score or raise the score to a minimum which can be further improved.
+			// Remember, static evals will never reach these impossible tb-win/loss scores
+
+			// Why don't we update score in non-PV nodes?
+			// Because if we are in a non-pv node and didn't get a cutoff then we had one of two situations:
+			// 1. We found a tb - win which is further from root than a tb - win from another line
+			// 2. We found a tb - loss which is closer to root than a tb - loss from another line
+			// Either way this node won't become part of the PV and so getting the correct score doesn't matter
+
+			// Why do we update alpha?
+			// Because we are spending effort exploring a subtree when we already know the result. All we actually
+			// care about is whether there exists a forced mate or not from this node, and hence we raise alpha
+			// to an impossible goal that prunes away all non-mate scores.
+
+			// Why don't we raise alpha in non-pv nodes?
+			// Because if we had a tb-win and the score < beta, then it must also be <= alpha remembering we are in a
+			// zero width search and beta = alpha + 1.
+
+			if (IsPV(beta, alpha))
 			{
 				if (probe.GetScore() >= TBWinIn(MAX_DEPTH))
 				{
@@ -238,7 +251,7 @@ SearchResult NegaScout(Position& position, unsigned int initialDepth, int depthR
 			tTable.ResetAge(position.GetZobristKey(), position.GetTurnCount(), distanceFromRoot);
 
 			if (!position.CheckForRep(distanceFromRoot, 2))	//Don't take scores from the TT if there's a two-fold repitition
-				if (UseTransposition(entry, distanceFromRoot, alpha, beta)) 
+				if (UseTransposition(entry, alpha, beta)) 
 					return SearchResult(entry.GetScore(), entry.GetMove());
 		}
 	}
@@ -254,7 +267,7 @@ SearchResult NegaScout(Position& position, unsigned int initialDepth, int depthR
 	int staticScore = colour * EvaluatePositionNet(position, locals.evalTable); 
 
 	//Static null move pruning
-	if (depthRemaining <= SNMP_depth && staticScore - SNMP_coeff * depthRemaining >= beta && !InCheck && !IsPV(beta, alpha)) return beta;
+	if (depthRemaining < SNMP_depth && staticScore - SNMP_coeff * depthRemaining >= beta && !InCheck && !IsPV(beta, alpha)) return beta;
 
 	//Null move pruning
 	if (AllowedNull(allowedNull, position, beta, alpha, InCheck) && (staticScore > beta))
@@ -298,9 +311,9 @@ SearchResult NegaScout(Position& position, unsigned int initialDepth, int depthR
 	if (GetHashMove(position, distanceFromRoot).IsUninitialized() && depthRemaining > 3)
 		depthRemaining--;
 
-	bool FutileNode = (depthRemaining < FutilityMaxDepth) && (staticScore + FutilityMargins[std::max<int>(0, depthRemaining)] < a);
+	bool FutileNode = depthRemaining < Futility_depth && staticScore + Futility_constant + Futility_coeff * depthRemaining < a;
 
-	MoveGenerator gen(position, distanceFromRoot, locals, false);
+	MoveGenerator gen(position, distanceFromRoot, locals, locals.moveList[distanceFromRoot], false);
 	Move move;
 
 	for (searchedMoves = 0; gen.Next(move); searchedMoves++)
@@ -310,6 +323,10 @@ SearchResult NegaScout(Position& position, unsigned int initialDepth, int depthR
 
 		noLegalMoves = false;
 		locals.AddNode();
+
+		// late move pruning
+		if (depthRemaining < LMP_depth && searchedMoves >= LMP_constant + LMP_coeff * depthRemaining && Score > TBLossIn(MAX_DEPTH))
+			gen.SkipQuiets();
 
 		//futility pruning
 		if (IsFutile(move, beta, alpha, position, InCheck) && searchedMoves > 0 && FutileNode)	//Possibly stop futility pruning if alpha or beta are close to mate scores
@@ -383,7 +400,6 @@ unsigned int ProbeTBRoot(const Position& position)
 		position.GetPieceBB(WHITE_KNIGHT) | position.GetPieceBB(BLACK_KNIGHT),
 		position.GetPieceBB(WHITE_PAWN) | position.GetPieceBB(BLACK_PAWN),
 		position.GetFiftyMoveCount(),
-		position.GetCanCastleBlackKingside() * TB_CASTLING_k + position.GetCanCastleBlackQueenside() * TB_CASTLING_q + position.GetCanCastleWhiteKingside() * TB_CASTLING_K + position.GetCanCastleWhiteQueenside() * TB_CASTLING_Q,
 		position.GetEnPassant() <= SQ_H8 ? position.GetEnPassant() : 0,
 		position.GetTurn(),
 		NULL);
@@ -398,8 +414,6 @@ unsigned int ProbeTBSearch(const Position& position)
 		position.GetPieceBB(WHITE_BISHOP) | position.GetPieceBB(BLACK_BISHOP),
 		position.GetPieceBB(WHITE_KNIGHT) | position.GetPieceBB(BLACK_KNIGHT),
 		position.GetPieceBB(WHITE_PAWN) | position.GetPieceBB(BLACK_PAWN),
-		position.GetFiftyMoveCount(),											
-		position.GetCanCastleBlackKingside() * TB_CASTLING_k + position.GetCanCastleBlackQueenside() * TB_CASTLING_q + position.GetCanCastleWhiteKingside() * TB_CASTLING_K + position.GetCanCastleWhiteQueenside() * TB_CASTLING_Q,
 		position.GetEnPassant() <= SQ_H8 ? position.GetEnPassant() : 0,
 		position.GetTurn());
 }
@@ -409,7 +423,7 @@ SearchResult UseSearchTBScore(unsigned int result, int distanceFromRoot)
 	int score = -1;
 
 	if (result == TB_LOSS)
-		score = -5000 + distanceFromRoot;
+		score = TBLossIn(distanceFromRoot);
 	else if (result == TB_BLESSED_LOSS)
 		score = 0;
 	else if (result == TB_DRAW)
@@ -417,7 +431,7 @@ SearchResult UseSearchTBScore(unsigned int result, int distanceFromRoot)
 	else if (result == TB_CURSED_WIN)
 		score = 0;
 	else if (result == TB_WIN)
-		score = 5000 - distanceFromRoot;
+		score = TBWinIn(distanceFromRoot);
 	else
 		assert(0);
 
@@ -476,7 +490,7 @@ void UpdatePV(Move move, int distanceFromRoot, std::vector<std::vector<Move>>& P
 		PvTable[distanceFromRoot].insert(PvTable[distanceFromRoot].end(), PvTable[distanceFromRoot + 1].begin(), PvTable[distanceFromRoot + 1].end());
 }
 
-bool UseTransposition(TTEntry& entry, int distanceFromRoot, int alpha, int beta)
+bool UseTransposition(const TTEntry& entry, int alpha, int beta)
 {
 	if (entry.GetCutoff() == EntryType::EXACT) return true;
 
@@ -500,11 +514,8 @@ int extension(const Position& position, int alpha, int beta)
 {
 	int extension = 0;
 
-	if (IsPV(beta, alpha))
-	{
-		if (IsSquareThreatened(position, position.GetKing(position.GetTurn()), position.GetTurn()))	
-			extension += 1;
-	}
+	if (IsSquareThreatened(position, position.GetKing(position.GetTurn()), position.GetTurn()))	
+		extension += 1;
 
 	return extension;
 }
@@ -580,22 +591,22 @@ int TerminalScore(const Position& position, int distanceFromRoot)
 	}
 }
 
-int matedIn(int distanceFromRoot)
+constexpr int matedIn(int distanceFromRoot)
 {
 	return MATED + distanceFromRoot;
 }
 
-int mateIn(int distanceFromRoot)
+constexpr int mateIn(int distanceFromRoot)
 {
 	return MATE - distanceFromRoot;
 }
 
-int TBLossIn(int distanceFromRoot)
+constexpr int TBLossIn(int distanceFromRoot)
 {
 	return TB_LOSS_SCORE + distanceFromRoot;
 }
 
-int TBWinIn(int distanceFromRoot)
+constexpr int TBWinIn(int distanceFromRoot)
 {
 	return TB_WIN_SCORE - distanceFromRoot;
 }
@@ -619,7 +630,7 @@ SearchResult Quiescence(Position& position, unsigned int initialDepth, int alpha
 	Move bestmove;
 	int Score = staticScore;
 
-	MoveGenerator gen(position, distanceFromRoot, locals, true);
+	MoveGenerator gen(position, distanceFromRoot, locals, locals.moveList[distanceFromRoot], true);
 	Move move;
 
 	while (gen.Next(move))
@@ -628,22 +639,14 @@ SearchResult Quiescence(Position& position, unsigned int initialDepth, int alpha
 
 		int SEE = gen.GetSEE();
 
-		if (move.IsPromotion())
-		{
-			SEE = PieceValues(WHITE_QUEEN);
-		}
-
 		if (staticScore + SEE + Delta_margin < alpha) 						//delta pruning
 			break;
 
 		if (SEE < 0)														//prune bad captures
 			break;
 
-		if (SEE <= 0 && position.GetCaptureSquare() != move.GetTo())	//prune equal captures that aren't recaptures
-			continue;
-
 		if (move.IsPromotion() && !(move.GetFlag() == QUEEN_PROMOTION || move.GetFlag() == QUEEN_PROMOTION_CAPTURE))	//prune underpromotions
-			continue;
+			break;
 
 		position.ApplyMove(move);
 		int newScore = -Quiescence(position, initialDepth, -beta, -alpha, -colour, distanceFromRoot + 1, depthRemaining - 1, locals, sharedData).GetScore();
@@ -661,16 +664,10 @@ SearchResult Quiescence(Position& position, unsigned int initialDepth, int alpha
 
 void AddKiller(Move move, int distanceFromRoot, std::vector<std::array<Move, 2>>& KillerMoves)
 {
-	if (move.IsCapture() || move.IsPromotion() || move == KillerMoves[distanceFromRoot][0]) return;
+	if (move.IsCapture() || move.IsPromotion() || KillerMoves[distanceFromRoot][0] == move) return;
 
-	if (move == KillerMoves[distanceFromRoot][1])
-	{
-		std::swap(KillerMoves[distanceFromRoot][0], KillerMoves[distanceFromRoot][1]);
-	}
-	else
-	{
-		KillerMoves[distanceFromRoot][1] = move;	//replace the 2nd one
-	}
+	KillerMoves[distanceFromRoot][1] = KillerMoves[distanceFromRoot][0];
+	KillerMoves[distanceFromRoot][0] = move;
 }
 
 void AddHistory(const MoveGenerator& gen, const Move& move, SearchData& locals, int depthRemaining)

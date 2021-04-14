@@ -3,26 +3,13 @@
 #include "TimeManage.h"
 #include "EvalCache.h"
 #include "TranspositionTable.h"
+#include "MoveList.h"
 
 extern TranspositionTable tTable;
-
-enum Score
-{
-	HighINF = 30000,
-	LowINF = -30000,
-
-	MATED = -10000,
-	TB_LOSS_SCORE = -5000,
-	DRAW = 0,
-	TB_WIN_SCORE = 5000,
-	MATE = 10000
-};
 
 class SearchLimits
 {
 public:
-	SearchLimits() : SearchTimeManager(0, 0) {};
-
 	bool CheckTimeLimit() const;
 	bool CheckDepthLimit(int depth) const;
 	bool CheckMateLimit(int score) const;
@@ -36,7 +23,6 @@ public:
 	int ElapsedTime() const { return SearchTimeManager.ElapsedMs(); }
 
 private:
-
 	SearchTimeManage SearchTimeManager;
 	mutable int PeriodicCheck = 0;
 
@@ -51,18 +37,6 @@ private:
 	mutable bool periodicTimeLimit = false;
 };
 
-struct HistoryTable
-{
-	int16_t Get(Players side, Square from, Square to) const { return table.at(side).at(from).at(to); }
-	void AddHistory(Players side, Square from, Square to, int change);
-
-private:
-	//table[side][from][to]
-	std::array<std::array<std::array<int16_t, N_SQUARES>, N_SQUARES>, N_PLAYERS> table = {};
-
-	int16_t& Get(Players side, Square from, Square to) { return table.at(side).at(from).at(to); }
-};
-
 struct SearchData
 {
 	explicit SearchData(const SearchLimits& Limits);
@@ -75,13 +49,18 @@ private:
 public:
 	std::vector<std::vector<Move>> PvTable;
 	std::vector<std::array<Move, 2>> KillerMoves;					//2 moves indexed by distanceFromRoot
-	HistoryTable History;
+	std::array<std::array<std::array<int16_t, N_SQUARES>, N_SQUARES>, N_PLAYERS> History = {}; //[side][from][to]
 	
 	EvalCacheTable evalTable;
 	SearchLimits limits;
+	std::array<MoveList, MAX_DEPTH> moveList;
 
 	void AddNode() { nodes++; }
 	void AddTbHit() { tbHits++; }
+
+	void AddHistory(Players side, Square from, Square to, int change);
+
+	uint64_t GetThreadNodes() const { return nodes; }
 
 private:
 	friend class ThreadSharedData;
@@ -104,7 +83,6 @@ class ThreadSharedData
 {
 public:
 	ThreadSharedData(const SearchLimits& limits, const SearchParameters& parameters, bool NoOutput = false);
-	~ThreadSharedData();
 
 	Move GetBestMove() const;
 	unsigned int GetDepth() const;
@@ -126,11 +104,11 @@ private:
 	bool MultiPVExcludeMoveUnlocked(Move move) const;
 
 	mutable std::mutex ioMutex;
-	unsigned int threadDepthCompleted;				//The depth that has been completed. When the first thread finishes a depth it increments this. All other threads should stop searching that depth
+	unsigned int threadDepthCompleted = 0;			//The depth that has been completed. When the first thread finishes a depth it increments this. All other threads should stop searching that depth
 	Move currentBestMove;							//Whoever finishes first gets to update this as long as they searched deeper than threadDepth
-	int prevScore;									//if threads abandon the search, we need to know what the score was in order to set new alpha/beta bounds
-	int lowestAlpha;
-	int highestBeta;
+	int prevScore = 0;								//if threads abandon the search, we need to know what the score was in order to set new alpha/beta bounds
+	int lowestAlpha = 0;
+	int highestBeta = 0;
 	bool noOutput;									//Do not write anything to the concole
 
 	SearchParameters param;

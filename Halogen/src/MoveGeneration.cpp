@@ -1,86 +1,84 @@
 #include "MoveGeneration.h"
 
-void GenerateLegalMoves(Position& position, std::vector<Move>& moves, uint64_t pinned);
-void AddQuiescenceMoves(Position& position, std::vector<Move>& moves, uint64_t pinned);	//captures and/or promotions
-void AddQuietMoves(Position& position, std::vector<Move>& moves, uint64_t pinned);
+void GenerateLegalMoves(Position& position, MoveList& moves, uint64_t pinned);
+void AddQuiescenceMoves(Position& position, MoveList& moves, uint64_t pinned);	//captures and/or promotions
+void AddQuietMoves(Position& position, MoveList& moves, uint64_t pinned);
+void InCheckMoves(Position& position, MoveList& moves, uint64_t pinned);
 
 //Pawn moves
-void PawnPushes(Position& position, std::vector<Move>& moves, uint64_t pinned);
-void PawnPromotions(Position& position, std::vector<Move>& moves, uint64_t pinned);
-void PawnDoublePushes(Position& position, std::vector<Move>& moves, uint64_t pinned);
-void PawnEnPassant(Position& position, std::vector<Move>& moves);	//Ep moves are always checked for legality so no need for pinned mask
-void PawnCaptures(Position& position, std::vector<Move>& moves, uint64_t pinned);
+void PawnPushes(Position& position, MoveList& moves, uint64_t pinned);
+void PawnPromotions(Position& position, MoveList& moves, uint64_t pinned);
+void PawnDoublePushes(Position& position, MoveList& moves, uint64_t pinned);
+void PawnEnPassant(Position& position, MoveList& moves);	//Ep moves are always checked for legality so no need for pinned mask
+void PawnCaptures(Position& position, MoveList& moves, uint64_t pinned);
 
 //All other pieces
 template <PieceTypes pieceType, bool capture>
-void GenerateMoves(Position& position, std::vector<Move>& moves, Square square, uint64_t pinned);
+void GenerateMoves(Position& position, MoveList& moves, Square square, uint64_t pinned);
 
 //misc
-void CastleMoves(const Position& position, std::vector<Move>& moves);
+void CastleMoves(const Position& position, MoveList& moves);
 
 //utility functions
 bool MovePutsSelfInCheck(Position& position, const Move& move);
 uint64_t PinnedMask(const Position& position);
 
-template <PieceTypes pieceType>
-uint64_t AttackBB(Square sq, uint64_t occupied);
-
 //special generators for when in check
-void KingEvasions(Position& position, std::vector<Move>& moves);						//move the king out of danger	(single or multi threat)
-void KingCapturesEvade(Position& position, std::vector<Move>& moves);			//use only for multi threat with king evasions
-void CaptureThreat(Position& position, std::vector<Move>& moves, uint64_t threats);		//capture the attacker	(single threat only)
-void BlockThreat(Position& position, std::vector<Move>& moves, uint64_t threats);		//block the attacker (single threat only)
+void KingEvasions(Position& position, MoveList& moves);						//move the king out of danger	(single or multi threat)
+void KingCapturesEvade(Position& position, MoveList& moves);			//use only for multi threat with king evasions
+void CaptureThreat(Position& position, MoveList& moves, uint64_t threats);		//capture the attacker	(single threat only)
+void BlockThreat(Position& position, MoveList& moves, uint64_t threats);		//block the attacker (single threat only)
 
-void LegalMoves(Position& position, std::vector<Move>& moves)
+void LegalMoves(Position& position, MoveList& moves)
 {
 	uint64_t pinned = PinnedMask(position);
 
-	if (IsInCheck(position, position.GetTurn()))
+	if (IsInCheck(position))
 	{
-		moves.reserve(10);
-
-		uint64_t Threats = GetThreats(position, position.GetKing(position.GetTurn()), position.GetTurn());
-		assert(Threats != 0);
-
-		if (GetBitCount(Threats) > 1)					//double check
-		{
-			KingEvasions(position, moves);
-			KingCapturesEvade(position, moves);
-		}
-		else
-		{
-			PawnPushes(position, moves, pinned);		//pawn moves are hard :( so we calculate those normally
-			PawnDoublePushes(position, moves, pinned);
-			PawnCaptures(position, moves, pinned);
-			PawnEnPassant(position, moves);
-			PawnPromotions(position, moves, pinned);
-
-			KingEvasions(position, moves);
-			KingCapturesEvade(position, moves);
-			CaptureThreat(position, moves, Threats);
-			BlockThreat(position, moves, Threats);
-		}
+		InCheckMoves(position, moves, pinned);
 	}
 	else
 	{
-		moves.reserve(50);
 		GenerateLegalMoves(position, moves, pinned);
 	}
 }
 
-void QuiescenceMoves(Position& position, std::vector<Move>& moves)
+void InCheckMoves(Position& position, MoveList& moves, uint64_t pinned)
 {
-	moves.reserve(15);
+	uint64_t Threats = GetThreats(position, position.GetKing(position.GetTurn()), position.GetTurn());
+	assert(Threats != 0);
+
+	if (GetBitCount(Threats) > 1)					//double check
+	{
+		KingEvasions(position, moves);
+		KingCapturesEvade(position, moves);
+	}
+	else
+	{
+		PawnPushes(position, moves, pinned);		//pawn moves are hard :( so we calculate those normally
+		PawnDoublePushes(position, moves, pinned);
+		PawnCaptures(position, moves, pinned);
+		PawnEnPassant(position, moves);
+		PawnPromotions(position, moves, pinned);
+
+		KingEvasions(position, moves);
+		KingCapturesEvade(position, moves);
+		CaptureThreat(position, moves, Threats);
+		BlockThreat(position, moves, Threats);
+	}
+}
+
+void QuiescenceMoves(Position& position, MoveList& moves)
+{
 	AddQuiescenceMoves(position, moves, PinnedMask(position));
 }
 
-void QuietMoves(Position& position, std::vector<Move>& moves)
+void QuietMoves(Position& position, MoveList& moves)
 {
-	moves.reserve(40);
 	AddQuietMoves(position, moves, PinnedMask(position));
 }
 
-void AddQuiescenceMoves(Position& position, std::vector<Move>& moves, uint64_t pinned)
+void AddQuiescenceMoves(Position& position, MoveList& moves, uint64_t pinned)
 {
 	PawnCaptures(position, moves, pinned);
 	PawnEnPassant(position, moves);
@@ -97,7 +95,7 @@ uint64_t PinnedMask(const Position& position)
 {
 	Players turn = position.GetTurn();
 	Square king = position.GetKing(turn);
-	if (IsSquareThreatened(position, king, turn)) return UNIVERSE;
+	if (IsInCheck(position)) return UNIVERSE;
 
 	uint64_t mask = EMPTY;
 	uint64_t possiblePins = QueenAttacks[king] & position.GetPiecesColour(turn);
@@ -143,55 +141,56 @@ uint64_t PinnedMask(const Position& position)
 	return mask;
 }
 
-void KingEvasions(Position& position, std::vector<Move>& moves)
+//Moves going from a square to squares on a bitboard
+void AppendLegalMoves(Square from, uint64_t to, Position& position, MoveFlag flag, MoveList& moves, uint64_t pinned = UNIVERSE)
 {
-	Square square = position.GetKing(position.GetTurn());
-	uint64_t quiet = position.GetEmptySquares() & KingAttacks[square];
-
-	while (quiet != 0)
+	while (to != 0)
 	{
-		Square target = static_cast<Square>(LSBpop(quiet));
-		Move move(square, target, QUIET);
-
-		if (!MovePutsSelfInCheck(position, move))
-			moves.push_back(move);
+		Square target = static_cast<Square>(LSBpop(to));
+		Move move(from, target, flag);
+		if (!(pinned & SquareBB[from]) || !MovePutsSelfInCheck(position, move))
+			moves.Append(move);
 	}
 }
 
-void KingCapturesEvade(Position& position, std::vector<Move>& moves)
+//Moves going to a square from squares on a bitboard
+void AppendLegalMoves(uint64_t from, Square to, Position& position, MoveFlag flag, MoveList& moves, uint64_t pinned = UNIVERSE)
+{
+	while (from != 0)
+	{
+		Square source = static_cast<Square>(LSBpop(from));
+		Move move(source, to, flag);
+		if (!(pinned & SquareBB[source]) || !MovePutsSelfInCheck(position, move))
+			moves.Append(move);
+	}
+}
+
+void KingEvasions(Position& position, MoveList& moves)
+{
+	Square square = position.GetKing(position.GetTurn());
+	uint64_t quiets = position.GetEmptySquares() & KingAttacks[square];
+	AppendLegalMoves(square, quiets, position, QUIET, moves);
+}
+
+void KingCapturesEvade(Position& position, MoveList& moves)
 {
 	Square square = position.GetKing(position.GetTurn());
 	uint64_t captures = (position.GetPiecesColour(!position.GetTurn())) & KingAttacks[square];
-
-	while (captures != 0)
-	{
-		Square target = static_cast<Square>(LSBpop(captures));
-		Move move(square, target, CAPTURE);
-
-		if (!MovePutsSelfInCheck(position, move))
-			moves.push_back(move);
-	}
+	AppendLegalMoves(square, captures, position, CAPTURE, moves);
 }
 
-void CaptureThreat(Position& position, std::vector<Move>& moves, uint64_t threats)
+void CaptureThreat(Position& position, MoveList& moves, uint64_t threats)
 {
-	Square threatSquare = static_cast<Square>(LSBpop(threats));
+	Square square = static_cast<Square>(LSBpop(threats));
 
-	uint64_t potentialCaptures = GetThreats(position, threatSquare, !position.GetTurn()) 
+	uint64_t potentialCaptures = GetThreats(position, square, !position.GetTurn())
 		& ~SquareBB[position.GetKing(position.GetTurn())]									//King captures handelled in KingCapturesEvade()
 		& ~position.GetPieceBB(Piece(PAWN, position.GetTurn()));							//Pawn captures handelled elsewhere
 
-	while (potentialCaptures != 0)
-	{
-		Square start = static_cast<Square>(LSBpop(potentialCaptures));
-		Move move(start, threatSquare, CAPTURE);
-
-		if (!MovePutsSelfInCheck(position, move))
-			moves.push_back(move);
-	}
+	AppendLegalMoves(potentialCaptures, square, position, CAPTURE, moves);
 }
 
-void BlockThreat(Position& position, std::vector<Move>& moves, uint64_t threats)
+void BlockThreat(Position& position, MoveList& moves, uint64_t threats)
 {
 	Square threatSquare = static_cast<Square>(LSBpop(threats));
 	Pieces piece = position.GetSquare(threatSquare);
@@ -202,27 +201,19 @@ void BlockThreat(Position& position, std::vector<Move>& moves, uint64_t threats)
 
 	while (blockSquares != 0)
 	{
-		Square sq = static_cast<Square>(LSBpop(blockSquares));
-		uint64_t potentialBlockers = GetThreats(position, sq, !position.GetTurn()) & ~position.GetPieceBB(Piece(PAWN, position.GetTurn()));	//pawn moves need to be handelled elsewhere because they might threaten a square without being able to move there
-
-		while (potentialBlockers != 0)
-		{
-			Square start = static_cast<Square>(LSBpop(potentialBlockers));
-			Move move(start, sq, QUIET);
-
-			if (!MovePutsSelfInCheck(position, move))
-				moves.push_back(move);
-		}
+		Square square = static_cast<Square>(LSBpop(blockSquares));
+		uint64_t potentialBlockers = GetThreats(position, square, !position.GetTurn()) & ~position.GetPieceBB(Piece(PAWN, position.GetTurn()));	//pawn moves need to be handelled elsewhere because they might threaten a square without being able to move there
+		AppendLegalMoves(potentialBlockers, square, position, QUIET, moves);
 	}
 }
 
-void GenerateLegalMoves(Position& position, std::vector<Move>& moves, uint64_t pinned)
+void GenerateLegalMoves(Position& position, MoveList& moves, uint64_t pinned)
 {
 	AddQuietMoves(position, moves, pinned);
 	AddQuiescenceMoves(position, moves, pinned);
 }
 
-void AddQuietMoves(Position& position, std::vector<Move>& moves, uint64_t pinned)
+void AddQuietMoves(Position& position, MoveList& moves, uint64_t pinned)
 {
 	PawnPushes(position, moves, pinned);
 	PawnDoublePushes(position, moves, pinned);
@@ -230,12 +221,12 @@ void AddQuietMoves(Position& position, std::vector<Move>& moves, uint64_t pinned
 
 	for (uint64_t pieces = position.GetPieceBB(KNIGHT, position.GetTurn()); pieces != 0; GenerateMoves<KNIGHT, false>(position, moves, static_cast<Square>(LSBpop(pieces)), pinned));
 	for (uint64_t pieces = position.GetPieceBB(BISHOP, position.GetTurn()); pieces != 0; GenerateMoves<BISHOP, false>(position, moves, static_cast<Square>(LSBpop(pieces)), pinned));
-	for (uint64_t pieces = position.GetPieceBB(QUEEN, position.GetTurn()); pieces != 0; GenerateMoves<QUEEN, false>(position, moves, static_cast<Square>(LSBpop(pieces)), pinned));
-	for (uint64_t pieces = position.GetPieceBB(ROOK, position.GetTurn()); pieces != 0; GenerateMoves<ROOK, false>(position, moves, static_cast<Square>(LSBpop(pieces)), pinned));
-	for (uint64_t pieces = position.GetPieceBB(KING, position.GetTurn()); pieces != 0; GenerateMoves<KING, false>(position, moves, static_cast<Square>(LSBpop(pieces)), pinned));
+	for (uint64_t pieces = position.GetPieceBB(QUEEN,  position.GetTurn()); pieces != 0; GenerateMoves<QUEEN,  false>(position, moves, static_cast<Square>(LSBpop(pieces)), pinned));
+	for (uint64_t pieces = position.GetPieceBB(ROOK,   position.GetTurn()); pieces != 0; GenerateMoves<ROOK,   false>(position, moves, static_cast<Square>(LSBpop(pieces)), pinned));
+	for (uint64_t pieces = position.GetPieceBB(KING,   position.GetTurn()); pieces != 0; GenerateMoves<KING,   false>(position, moves, static_cast<Square>(LSBpop(pieces)), pinned));
 }
 
-void PawnPushes(Position& position, std::vector<Move>& moves, uint64_t pinned)
+void PawnPushes(Position& position, MoveList& moves, uint64_t pinned)
 {
 	int foward = 0;
 	uint64_t targets = 0;
@@ -257,14 +248,16 @@ void PawnPushes(Position& position, std::vector<Move>& moves, uint64_t pinned)
 	while (pawnPushes != 0)
 	{
 		Square end = static_cast<Square>(LSBpop(pawnPushes));
-		Move move(static_cast<Square>(end - foward), end, QUIET);
+		Square start = static_cast<Square>(end - foward);
 
-		if (!(pinned & SquareBB[end - foward]) || !MovePutsSelfInCheck(position, move))
-			moves.push_back(move);
+		Move move(start, end, QUIET);
+
+		if (!(pinned & SquareBB[start]) || !MovePutsSelfInCheck(position, move))
+			moves.Append(move);
 	}
 }
 
-void PawnPromotions(Position& position, std::vector<Move>& moves, uint64_t pinned)
+void PawnPromotions(Position& position, MoveList& moves, uint64_t pinned)
 {
 	int foward = 0;
 	uint64_t targets = 0;
@@ -286,19 +279,20 @@ void PawnPromotions(Position& position, std::vector<Move>& moves, uint64_t pinne
 	while (pawnPromotions != 0)
 	{
 		Square end = static_cast<Square>(LSBpop(pawnPromotions));
+		Square start = static_cast<Square>(end - foward);
 
-		Move move(static_cast<Square>(end - foward), end, KNIGHT_PROMOTION);
-		if ((pinned & SquareBB[end - foward]) && MovePutsSelfInCheck(position, move))
+		Move move(start, end, KNIGHT_PROMOTION);
+		if ((pinned & SquareBB[start]) && MovePutsSelfInCheck(position, move))
 			continue;
 
-		moves.push_back(move);
-		moves.push_back(Move(static_cast<Square>(end - foward), end, ROOK_PROMOTION));
-		moves.push_back(Move(static_cast<Square>(end - foward), end, BISHOP_PROMOTION));
-		moves.push_back(Move(static_cast<Square>(end - foward), end, QUEEN_PROMOTION));
+		moves.Append(move);
+		moves.Append(start, end, ROOK_PROMOTION);
+		moves.Append(start, end, BISHOP_PROMOTION);
+		moves.Append(start, end, QUEEN_PROMOTION);
 	}
 }
 
-void PawnDoublePushes(Position& position, std::vector<Move>& moves, uint64_t pinned)
+void PawnDoublePushes(Position& position, MoveList& moves, uint64_t pinned)
 {
 	int foward = 0;
 	uint64_t targets = 0;
@@ -322,31 +316,25 @@ void PawnDoublePushes(Position& position, std::vector<Move>& moves, uint64_t pin
 	while (targets != 0)
 	{
 		Square end = static_cast<Square>(LSBpop(targets));
-		Move move(static_cast<Square>(end - foward), end, PAWN_DOUBLE_MOVE);
+		Square start = static_cast<Square>(end - foward);
 
-		if (!(pinned & SquareBB[end - foward]) || !MovePutsSelfInCheck(position, move))
-			moves.push_back(move);
+		Move move(start, end, PAWN_DOUBLE_MOVE);
+
+		if (!(pinned & SquareBB[start]) || !MovePutsSelfInCheck(position, move))
+			moves.Append(move);
 	}
 }
 
-void PawnEnPassant(Position& position, std::vector<Move>& moves)
+void PawnEnPassant(Position& position, MoveList& moves)
 {
 	if (position.GetEnPassant() <= SQ_H8)
 	{
 		uint64_t potentialAttackers = PawnAttacks[!position.GetTurn()][position.GetEnPassant()] & position.GetPieceBB(Piece(PAWN, position.GetTurn()));
-
-		while (potentialAttackers != 0)
-		{
-			Square start = static_cast<Square>(LSBpop(potentialAttackers));
-
-			Move move(start, position.GetEnPassant(), EN_PASSANT);
-			if (!MovePutsSelfInCheck(position, move))
-				moves.push_back(move);
-		}
+		AppendLegalMoves(potentialAttackers, position.GetEnPassant(), position, EN_PASSANT, moves);
 	}
 }
 
-void PawnCaptures(Position& position, std::vector<Move>& moves, uint64_t pinned)
+void PawnCaptures(Position& position, MoveList& moves, uint64_t pinned)
 {
 	int fowardleft = 0;
 	int fowardright = 0;
@@ -372,39 +360,41 @@ void PawnCaptures(Position& position, std::vector<Move>& moves, uint64_t pinned)
 	while (leftAttack != 0)
 	{
 		Square end = static_cast<Square>(LSBpop(leftAttack));
+		Square start = static_cast<Square>(end - fowardleft);
 
-		Move move(static_cast<Square>(end - fowardleft), end, CAPTURE);
-		if ((pinned & SquareBB[end - fowardleft]) && MovePutsSelfInCheck(position, move))
+		Move move(start, end, CAPTURE);
+		if ((pinned & SquareBB[start]) && MovePutsSelfInCheck(position, move))
 			continue;
 
 		if (GetRank(end) == RANK_1 || GetRank(end) == RANK_8)
 		{
-			moves.push_back(Move(static_cast<Square>(end - fowardleft), end, KNIGHT_PROMOTION_CAPTURE));
-			moves.push_back(Move(static_cast<Square>(end - fowardleft), end, ROOK_PROMOTION_CAPTURE));
-			moves.push_back(Move(static_cast<Square>(end - fowardleft), end, BISHOP_PROMOTION_CAPTURE));
-			moves.push_back(Move(static_cast<Square>(end - fowardleft), end, QUEEN_PROMOTION_CAPTURE));
+			moves.Append(start, end, KNIGHT_PROMOTION_CAPTURE);
+			moves.Append(start, end, ROOK_PROMOTION_CAPTURE);
+			moves.Append(start, end, BISHOP_PROMOTION_CAPTURE);
+			moves.Append(start, end, QUEEN_PROMOTION_CAPTURE);
 		}
 		else
-			moves.push_back(move);
+			moves.Append(move);
 	}
 
 	while (rightAttack != 0)
 	{
 		Square end = static_cast<Square>(LSBpop(rightAttack));
+		Square start = static_cast<Square>(end - fowardright);
 
-		Move move(static_cast<Square>(end - fowardright), end, CAPTURE);
-		if ((pinned & SquareBB[end - fowardright]) && MovePutsSelfInCheck(position, move))
+		Move move(start, end, CAPTURE);
+		if ((pinned & SquareBB[start]) && MovePutsSelfInCheck(position, move))
 			continue;
 
 		if (GetRank(end) == RANK_1 || GetRank(end) == RANK_8)
 		{
-			moves.push_back(Move(static_cast<Square>(end - fowardright), end, KNIGHT_PROMOTION_CAPTURE));
-			moves.push_back(Move(static_cast<Square>(end - fowardright), end, ROOK_PROMOTION_CAPTURE));
-			moves.push_back(Move(static_cast<Square>(end - fowardright), end, BISHOP_PROMOTION_CAPTURE));
-			moves.push_back(Move(static_cast<Square>(end - fowardright), end, QUEEN_PROMOTION_CAPTURE));
+			moves.Append(start, end, KNIGHT_PROMOTION_CAPTURE);
+			moves.Append(start, end, ROOK_PROMOTION_CAPTURE);
+			moves.Append(start, end, BISHOP_PROMOTION_CAPTURE);
+			moves.Append(start, end, QUEEN_PROMOTION_CAPTURE);
 		}
 		else
-			moves.push_back(move);
+			moves.Append(move);
 	}
 }
 
@@ -418,7 +408,7 @@ void CastleMoves(const Position& position, std::vector<Move>& moves)
 		{
 			if (!IsSquareThreatened(position, SQ_E1, position.GetTurn()) && !IsSquareThreatened(position, SQ_F1, position.GetTurn()) && !IsSquareThreatened(position, SQ_G1, position.GetTurn()))
 			{
-				moves.push_back(Move(SQ_E1, SQ_G1, KING_CASTLE));
+				moves.emplace_back(SQ_E1, SQ_G1, KING_CASTLE);
 			}
 		}
 	}
@@ -429,7 +419,7 @@ void CastleMoves(const Position& position, std::vector<Move>& moves)
 		{
 			if (!IsSquareThreatened(position, SQ_E1, position.GetTurn()) && !IsSquareThreatened(position, SQ_D1, position.GetTurn()) && !IsSquareThreatened(position, SQ_C1, position.GetTurn()))
 			{
-				moves.push_back(Move(SQ_E1, SQ_C1, QUEEN_CASTLE));
+				moves.emplace_back(SQ_E1, SQ_C1, QUEEN_CASTLE);
 			}
 		}
 	}
@@ -440,7 +430,7 @@ void CastleMoves(const Position& position, std::vector<Move>& moves)
 		{
 			if (!IsSquareThreatened(position, SQ_E8, position.GetTurn()) && !IsSquareThreatened(position, SQ_F8, position.GetTurn()) && !IsSquareThreatened(position, SQ_G8, position.GetTurn()))
 			{
-				moves.push_back(Move(SQ_E8, SQ_G8, KING_CASTLE));
+				moves.emplace_back(SQ_E8, SQ_G8, KING_CASTLE);
 			}
 		}
 	}
@@ -451,37 +441,32 @@ void CastleMoves(const Position& position, std::vector<Move>& moves)
 		{
 			if (!IsSquareThreatened(position, SQ_E8, position.GetTurn()) && !IsSquareThreatened(position, SQ_D8, position.GetTurn()) && !IsSquareThreatened(position, SQ_C8, position.GetTurn()))
 			{
-				moves.push_back(Move(SQ_E8, SQ_C8, QUEEN_CASTLE));
+				moves.emplace_back(SQ_E8, SQ_C8, QUEEN_CASTLE);
 			}
 		}
 	}
 }
 
-template <PieceTypes pieceType, bool capture>
-void GenerateMoves(Position& position, std::vector<Move>& moves, Square square, uint64_t pinned)
+void CastleMoves(const Position& position, MoveList& moves)
 {
-	assert(square < N_SQUARES);
+	std::vector<Move> tmp;
+	CastleMoves(position, tmp);
+	for (auto& move : tmp)
+		moves.Append(move);
+}
 
+
+
+template <PieceTypes pieceType, bool capture>
+void GenerateMoves(Position& position, MoveList& moves, Square square, uint64_t pinned)
+{
 	uint64_t occupied = position.GetAllPieces();
-	uint64_t targets = capture ? position.GetPiecesColour(!position.GetTurn()) : ~occupied;
-	uint64_t quiet = targets & AttackBB<pieceType>(square, occupied);
-
-	while (quiet != 0)
-	{
-		Square target = static_cast<Square>(LSBpop(quiet));
-		Move move(square, target, capture ? CAPTURE : QUIET);
-
-		if ((pinned & SquareBB[square]) && MovePutsSelfInCheck(position, move))
-			continue;
-
-		moves.push_back(move);
-	}
+	uint64_t targets = (capture ? position.GetPiecesColour(!position.GetTurn()) : ~occupied) & AttackBB<pieceType>(square, occupied);
+	AppendLegalMoves(square, targets, position, capture ? CAPTURE : QUIET, moves, pinned);
 }
 
 bool IsSquareThreatened(const Position& position, Square square, Players colour)
 {
-	assert(square < N_SQUARES);
-
 	if ((KnightAttacks[square] & position.GetPieceBB(KNIGHT, !colour)) != 0)
 		return true;
 
@@ -532,7 +517,6 @@ bool IsInCheck(const Position& position)
 
 uint64_t GetThreats(const Position& position, Square square, Players colour)
 {
-	assert(square < N_SQUARES);
 	uint64_t threats = EMPTY;
 
 	threats |= (KnightAttacks[square] & position.GetPieceBB(KNIGHT, !colour));
@@ -570,18 +554,16 @@ uint64_t GetThreats(const Position& position, Square square, Players colour)
 
 Move GetSmallestAttackerMove(const Position& position, Square square, Players colour)
 {
-	assert(square < N_SQUARES);
-
 	uint64_t pawnmask = PawnAttacks[!colour][square] & position.GetPieceBB(Piece(PAWN, colour));
 	if (pawnmask != 0)
 	{
-		return(Move(static_cast<Square>(LSBpop(pawnmask)), square, CAPTURE));
+		return Move(static_cast<Square>(LSBpop(pawnmask)), square, CAPTURE);
 	}
 
 	uint64_t knightmask = (KnightAttacks[square] & position.GetPieceBB(KNIGHT, colour));
 	if (knightmask != 0)
 	{
-		return(Move(static_cast<Square>(LSBpop(knightmask)), square, CAPTURE));
+		return Move(static_cast<Square>(LSBpop(knightmask)), square, CAPTURE);
 	}
 
 	uint64_t Pieces = position.GetAllPieces();
@@ -613,10 +595,10 @@ Move GetSmallestAttackerMove(const Position& position, Square square, Players co
 	uint64_t kingmask = (KingAttacks[square] & position.GetPieceBB(KING, colour));
 	if (kingmask != 0)
 	{
-		return(Move(static_cast<Square>(LSBpop(kingmask)), square, CAPTURE));
+		return Move(static_cast<Square>(LSBpop(kingmask)), square, CAPTURE);
 	}
 
-	return Move();
+	return {};
 }
 
 bool MoveIsLegal(Position& position, const Move& move)
@@ -822,23 +804,3 @@ bool MovePutsSelfInCheck(Position& position, const Move & move)
 	position.RevertMoveQuick();
 	return ret;
 }
-
-//--------------------------------------------------------------------------
-//Below code adapted with permission from Terje, author of Weiss.
-
-// Returns the attack bitboard for a piece of piecetype on square sq
-template <PieceTypes pieceType>
-uint64_t AttackBB(Square sq, uint64_t occupied) 
-{
-	switch (pieceType) 
-	{
-		case KNIGHT:	return KnightAttacks[sq];
-		case KING:		return KingAttacks[sq];
-		case BISHOP:	return BishopTable[sq].attacks[AttackIndex(sq, occupied, BishopTable)];
-		case ROOK:		return RookTable[sq].attacks[AttackIndex(sq, occupied, RookTable)];
-		case QUEEN:		return AttackBB<ROOK>(sq, occupied) | AttackBB<BISHOP>(sq, occupied);
-		default:		throw std::invalid_argument("piecetype is argument is invalid");
-	}
-}
-
-//--------------------------------------------------------------------------

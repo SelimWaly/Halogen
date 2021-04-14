@@ -1,7 +1,7 @@
 #pragma once
 
+#include "Pyrrhic/tbprobe.h"
 #include "MoveGenerator.h"
-#include "tbprobe.h"
 #include <ctime>
 #include <algorithm>
 #include <thread>
@@ -9,36 +9,40 @@
 
 /*Tuneable search constants*/
 
-extern double LMR_constant;
-extern double LMR_coeff;
+inline double LMR_constant = -1.76;
+inline double LMR_coeff = 1.03;
 
-extern int Null_constant;				
-extern int Null_depth_quotent;				
-extern int Null_beta_quotent;
+inline int Null_constant = 4;
+inline int Null_depth_quotent = 6;
+inline int Null_beta_quotent = 250;
 
-extern int Futility_linear;
-extern int Futility_constant;
+inline int Futility_constant = 100;
+inline int Futility_coeff = 25;
+inline int Futility_depth = 10;
 
-extern int Aspiration_window;
+inline int Aspiration_window = 15;
 
-extern int Delta_margin;
+inline int Delta_margin = 200;
 
-extern int SNMP_depth;
-extern int SNMP_coeff;
+inline int SNMP_coeff = 119;
+inline int SNMP_depth = 8;
+
+inline int LMP_constant = 10;
+inline int LMP_coeff = 7;
+inline int LMP_depth = 6;
 
 /*----------------*/
 
 struct SearchResult
 {
-	SearchResult(int score, Move move = Move()) : m_score(score), m_move(move) {}
-	~SearchResult() {}
+	SearchResult(short score, Move move = Move()) : m_score(score), m_move(move) {}
 
 	int GetScore() const { return m_score; }
 	Move GetMove() const { return m_move; }
 
 private:
-	int m_score;
+	short m_score;
 	Move m_move;
 };
 
-uint64_t SearchThread(const Position& position, const SearchParameters& parameters, const SearchLimits& limits, bool noOutput = false);
+uint64_t SearchThread(Position position, SearchParameters parameters, const SearchLimits& limits, bool noOutput = false);

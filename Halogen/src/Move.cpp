@@ -21,9 +21,7 @@ Move::Move(Square from, Square to, MoveFlag flag)
 	SetFlag(flag);
 }
 
-Move::~Move()
-{
-}
+
 
 Square Move::GetFrom() const
 {
@@ -85,11 +83,6 @@ bool Move::operator==(const Move& rhs) const
 bool Move::IsUninitialized() const
 {
 	return (data == 0);
-}
-
-void Move::Reset()
-{
-	data = 0;
 }
 
 void Move::SetFrom(Square from)

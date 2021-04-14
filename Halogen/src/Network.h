@@ -14,13 +14,7 @@
 #include "BitBoardDefine.h"
 
 constexpr size_t INPUT_NEURONS = 12 * 64;
-constexpr size_t HIDDEN_NEURONS = 256;
-
-constexpr int16_t MAX_VALUE = 128;
-constexpr int16_t PRECISION = ((size_t)std::numeric_limits<int16_t>::max() + 1) / MAX_VALUE;
-constexpr int32_t SQUARE_PRECISION = (int32_t)PRECISION * PRECISION;
-constexpr int32_t HALF_SQUARE_PRECISION = SQUARE_PRECISION / 2;
-constexpr int16_t HALF_PRECISION = PRECISION / 2;
+constexpr size_t HIDDEN_NEURONS = 512;
 
 struct deltaArray
 {
@@ -37,7 +31,7 @@ struct deltaArray
 class Network
 {
 public:
-    void RecalculateIncremental(std::array<int16_t, INPUT_NEURONS> inputs);
+    void RecalculateIncremental(const std::array<int16_t, INPUT_NEURONS>& inputs);
     void ApplyDelta(const deltaArray& update);  //incrementally update the connections between input layer and first hidden layer
     void ApplyInverseDelta();                   //for un-make moves
     int16_t QuickEval() const;                  //when used with above, this just calculates starting from the alpha of first hidden layer and skips input -> hidden

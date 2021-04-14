@@ -16,10 +16,9 @@ class Position : public BoardParameters, public BitBoard
 {
 public:
 	Position();																									
-	~Position();
 
 	void ApplyMove(Move move);
-	void ApplyMove(std::string strmove);
+	void ApplyMove(const std::string &strmove);
 	void RevertMove();
 
 	void ApplyNullMove();
@@ -29,7 +28,8 @@ public:
 
 	void StartingPosition();
 	bool InitialiseFromFen(std::vector<std::string> fen);
-	bool InitialiseFromFen(std::string board, std::string turn, std::string castle, std::string ep, std::string fiftyMove, std::string turnCount); //Returns true after sucsessful execution, false otherwise
+	//Returns true after sucsessful execution, false otherwise
+	bool InitialiseFromFen(const std::string& board, const std::string& turn, const std::string& castle, const std::string& ep, const std::string& fiftyMove, const std::string& turnCount);
 	bool InitialiseFromFen(std::string fen);
 
 	uint64_t GetZobristKey() const;
@@ -52,7 +52,7 @@ private:
 	//TODO: move this to be inside of SearchData
 	int selDepth;
 
-	uint64_t key;
+	uint64_t key = EMPTY;
 	std::vector<uint64_t> PreviousKeys;
 
 	uint64_t GenerateZobristKey() const;
@@ -60,8 +60,6 @@ private:
 
 	std::array<int16_t, INPUT_NEURONS> GetInputLayer() const;
 	deltaArray& CalculateMoveDelta(Move move);				//A vector which calculates the CHANGE in each input parameter
-
-	static size_t modifier(size_t index);					//no inputs for pawns on front or back rank for neural net: we need to modify zobrist-like indexes
 
 	deltaArray delta;										//re recycle this object to save time in CalculateMoveDelta
 	Network net;
