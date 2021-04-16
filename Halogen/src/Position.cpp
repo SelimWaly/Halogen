@@ -8,6 +8,7 @@ Position::Position()
 void Position::ApplyMove(Move move)
 {
 	PreviousKeys.push_back(key);
+	PreviousMoves.push_back(move);
 	SaveParameters();
 	SaveBoard();
 	SetEnPassant(N_SQUARES);
@@ -163,12 +164,14 @@ void Position::RevertMove()
 	RestorePreviousParameters();
 	key = PreviousKeys.back();
 	PreviousKeys.pop_back();
+	PreviousMoves.pop_back();
 	net.ApplyInverseDelta();
 }
 
 void Position::ApplyNullMove()
 {
 	PreviousKeys.push_back(key);
+	PreviousMoves.push_back(Move());
 	SaveParameters();
 	SetEnPassant(N_SQUARES);
 	SetCaptureSquare(N_SQUARES);
@@ -192,6 +195,7 @@ void Position::RevertNullMove()
 	RestorePreviousParameters();
 	key = PreviousKeys.back();
 	PreviousKeys.pop_back();
+	PreviousMoves.pop_back();
 }
 
 void Position::Print() const
@@ -294,6 +298,7 @@ uint64_t Position::GetZobristKey() const
 void Position::Reset()
 {
 	PreviousKeys.clear();
+	PreviousMoves.clear();
 	key = EMPTY;
 
 	ResetBoard();

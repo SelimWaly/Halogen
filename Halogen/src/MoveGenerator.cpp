@@ -62,7 +62,7 @@ bool MoveGenerator::Next(Move& move)
 		Killer1 = locals.KillerMoves[distanceFromRoot][0];
 		stage = Stage::GIVE_KILLER_2;
 
-		if (MoveIsLegal(position, Killer1))
+		if (MoveIsLegal(position, Killer1) && Killer1 != TTmove)
 		{
 			move = Killer1;
 			return true;
@@ -72,11 +72,23 @@ bool MoveGenerator::Next(Move& move)
 	if (stage == Stage::GIVE_KILLER_2)
 	{
 		Killer2 = locals.KillerMoves[distanceFromRoot][1];
-		stage = Stage::GIVE_BAD_LOUD;
+		stage = Stage::GIVE_COUNTER;
 
-		if (MoveIsLegal(position, Killer2))
+		if (MoveIsLegal(position, Killer2) && Killer2 != TTmove)
 		{
 			move = Killer2;
+			return true;
+		}
+	}
+
+	if (stage == Stage::GIVE_COUNTER)
+	{
+		Counter = locals.CounterMoves[position.GetPreviousMove()];
+		stage = Stage::GIVE_BAD_LOUD;
+
+		if (MoveIsLegal(position, Counter) && Counter != TTmove && Counter != Killer1 && Counter != Killer2)
+		{
+			move = Counter;
 			return true;
 		}
 	}
@@ -242,6 +254,12 @@ void MoveGenerator::OrderMoves(MoveList& moves)
 		}
 
 		else if (moves[i].move == Killer2)
+		{
+			moves.erase(i);
+			i--;
+		}
+
+		else if (moves[i].move == Counter)
 		{
 			moves.erase(i);
 			i--;

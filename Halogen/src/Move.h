@@ -53,6 +53,10 @@ private:
 
 	//6 bits for 'from square', 6 bits for 'to square' and 4 bits for the 'move flag'
 	uint16_t data = 0;
+
+public:
+	using underlying_type = decltype(data);
+	operator underlying_type() const { return data; }
 };
 
 

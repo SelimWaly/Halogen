@@ -48,12 +48,15 @@ public:
 	void ReportDepth(int distanceFromRoot) { selDepth = std::max(distanceFromRoot, selDepth); }
 	int GetSelDepth() const { return selDepth; }
 
+	Move GetPreviousMove() const { return PreviousMoves.size() ? PreviousMoves.back() : Move(); }
+
 private:
 	//TODO: move this to be inside of SearchData
 	int selDepth;
 
 	uint64_t key = EMPTY;
 	std::vector<uint64_t> PreviousKeys;
+	std::vector<Move> PreviousMoves;
 
 	uint64_t GenerateZobristKey() const;
 	uint64_t IncrementZobristKey(Move move);	

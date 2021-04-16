@@ -7,8 +7,9 @@ enum class Stage
 	TT_MOVE,
 	GEN_LOUD,
 	GIVE_GOOD_LOUD,
-	GEN_KILLER_1, GIVE_KILLER_1,
-	GEN_KILLER_2, GIVE_KILLER_2,
+	GIVE_KILLER_1,
+	GIVE_KILLER_2,
+	GIVE_COUNTER,
 	GIVE_BAD_LOUD,
 	GEN_QUIET, GIVE_QUIET
 };
@@ -41,6 +42,7 @@ private:
 	Move TTmove;
 	Move Killer1;
 	Move Killer2;
+	Move Counter;
 
 	bool skipQuiets = false;
 };
