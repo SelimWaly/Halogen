@@ -147,6 +147,8 @@ enum GameStages
 
 enum Score
 {
+	ABORT = -32768,
+
 	HighINF = 30000,
 	LowINF = -30000,
 

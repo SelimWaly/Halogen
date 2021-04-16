@@ -171,22 +171,31 @@ SearchResult NegaScout(Position& position, unsigned int initialDepth, int depthR
 {
 	position.ReportDepth(distanceFromRoot);
 
-	if (distanceFromRoot >= MAX_DEPTH) return 0;						//Have we reached max depth?
+	// Have we reached max depth?
+	if (distanceFromRoot >= MAX_DEPTH) 
+		return DRAW;	
+
+	// Reset this level of the PV table
 	locals.PvTable[distanceFromRoot].clear();
 
-	//See if we should abort the search
-	if (initialDepth > 1 && locals.limits.CheckTimeLimit()) return -1;	//Am I out of time?
-	if (sharedData.ThreadAbort(initialDepth)) return -1;				//Has this depth been finished by another thread?
+	// Am I out of time?
+	if (initialDepth > 1 && locals.limits.CheckTimeLimit()) return ABORT;	
 
-	if (DeadPosition(position)) return 0;								//Is this position a dead draw?
-	if (CheckForRep(position, distanceFromRoot)							//Have we had a draw by repitition?
-		|| position.GetFiftyMoveCount() > 100)							//cannot use >= as it could currently be checkmate which would count as a win
-		return 8 - (locals.GetThreadNodes() & 0b1111);					//as in https://github.com/Luecx/Koivisto/commit/c8f01211c290a582b69e4299400b667a7731a9f7 with permission from Koivisto authors. 
+	// Has another thread already finished this depth?
+	if (sharedData.ThreadAbort(initialDepth)) return ABORT;
+
+	// Check for insufficent material
+	if (DeadPosition(position)) return DRAW;
+
+	// Check for 3 fold rep and 50 move draw
+	if (CheckForRep(position, distanceFromRoot)	||
+		position.GetFiftyMoveCount() > 100)				// cannot use >= as it could currently be checkmate which would count as a win
+		return 8 - (locals.GetThreadNodes() & 0xF);		// as in https://github.com/Luecx/Koivisto/commit/c8f01211c290a582b69e4299400b667a7731a9f7 with permission from Koivisto authors. 
 	
 	int Score = LowINF;
 	int MaxScore = HighINF;
 
-	//Probe TB in search
+	// Probe TB in search
 	if (position.GetFiftyMoveCount() == 0 
 		&& position.GetCanCastleWhiteKingside() == false
 		&& position.GetCanCastleBlackKingside() == false
@@ -242,7 +251,7 @@ SearchResult NegaScout(Position& position, unsigned int initialDepth, int depthR
 		}
 	}
 
-	//Query the transpotition table
+	// Query the transpotition table
 	if (!IsPV(beta, alpha)) 
 	{
 		TTEntry entry = tTable.GetEntry(position.GetZobristKey(), distanceFromRoot);
@@ -258,7 +267,7 @@ SearchResult NegaScout(Position& position, unsigned int initialDepth, int depthR
 
 	bool InCheck = IsInCheck(position);
 
-	//Drop into quiescence search
+	// Drop into quiescence search
 	if (depthRemaining <= 0 && !InCheck)
 	{ 
 		return Quiescence(position, initialDepth, alpha, beta, colour, distanceFromRoot, depthRemaining, locals, sharedData);
@@ -266,10 +275,10 @@ SearchResult NegaScout(Position& position, unsigned int initialDepth, int depthR
 
 	int staticScore = colour * EvaluatePositionNet(position, locals.evalTable); 
 
-	//Static null move pruning
+	// Static null move pruning
 	if (depthRemaining < SNMP_depth && staticScore - SNMP_coeff * depthRemaining >= beta && !InCheck && !IsPV(beta, alpha)) return beta;
 
-	//Null move pruning
+	// Null move pruning
 	if (AllowedNull(allowedNull, position, beta, alpha, InCheck) && (staticScore > beta))
 	{
 		unsigned int reduction = Null_constant + depthRemaining / Null_depth_quotent + std::min(3, (staticScore - beta) / Null_beta_quotent);
@@ -294,20 +303,20 @@ SearchResult NegaScout(Position& position, unsigned int initialDepth, int depthR
 		}
 	}
 
-	//mate distance pruning
+	// Mate distance pruning
 	alpha = std::max<int>(matedIn(distanceFromRoot), alpha);
 	beta = std::min<int>(mateIn(distanceFromRoot), beta);
 	if (alpha >= beta)
 		return alpha;
 
-	//Set up search variables
+	// Set up search variables
 	Move bestMove = Move();	
 	int a = alpha;
 	int b = beta;
 	int searchedMoves;
 	bool noLegalMoves = true;
 
-	//Rebel style IID. Don't ask why this helps but it does.
+	// Rebel style IID.
 	if (GetHashMove(position, distanceFromRoot).IsUninitialized() && depthRemaining > 3)
 		depthRemaining--;
 
@@ -324,11 +333,11 @@ SearchResult NegaScout(Position& position, unsigned int initialDepth, int depthR
 		noLegalMoves = false;
 		locals.AddNode();
 
-		// late move pruning
+		// Late move pruning
 		if (depthRemaining < LMP_depth && searchedMoves >= LMP_constant + LMP_coeff * depthRemaining && Score > TBLossIn(MAX_DEPTH))
 			gen.SkipQuiets();
 
-		//futility pruning
+		// Futility pruning
 		if (IsFutile(move, beta, alpha, position, InCheck) && searchedMoves > 0 && FutileNode)	//Possibly stop futility pruning if alpha or beta are close to mate scores
 			continue;
 
@@ -336,7 +345,7 @@ SearchResult NegaScout(Position& position, unsigned int initialDepth, int depthR
 		tTable.PreFetch(position.GetZobristKey());							//load the transposition into l1 cache. ~5% speedup
 		int extendedDepth = depthRemaining + extension(position, alpha, beta);
 
-		//late move reductions
+		// Late move reductions
 		if (searchedMoves > 3)
 		{
 			int reduction = Reduction(depthRemaining, searchedMoves);
@@ -376,15 +385,16 @@ SearchResult NegaScout(Position& position, unsigned int initialDepth, int depthR
 		b = a + 1;				//Set a new zero width window
 	}
 
-	//Checkmate or stalemate 
+	// Checkmate or stalemate 
 	if (noLegalMoves)
 	{
 		return TerminalScore(position, distanceFromRoot);
 	}
 
+	// If TB_DRAW or TB_LOSS make sure to adjust the score
 	Score = std::min(Score, MaxScore);
 
-	if (!locals.limits.CheckTimeLimit() && !sharedData.ThreadAbort(initialDepth))
+	if (Score != ABORT)
 		AddScoreToTable(Score, alpha, position, depthRemaining, distanceFromRoot, beta, bestMove);
 
 	return SearchResult(Score, bestMove);
@@ -619,9 +629,9 @@ SearchResult Quiescence(Position& position, unsigned int initialDepth, int alpha
 	locals.PvTable[distanceFromRoot].clear();
 
 	//See if we should abort the search
-	if (initialDepth > 1 && locals.limits.CheckTimeLimit()) return -1;	//Am I out of time?
-	if (sharedData.ThreadAbort(initialDepth)) return -1;				//Has this depth been finished by another thread?
-	if (DeadPosition(position)) return 0;								//Is this position a dead draw?
+	if (initialDepth > 1 && locals.limits.CheckTimeLimit()) return ABORT;	//Am I out of time?
+	if (sharedData.ThreadAbort(initialDepth)) return ABORT;					//Has this depth been finished by another thread?
+	if (DeadPosition(position)) return 0;									//Is this position a dead draw?
 
 	int staticScore = colour * EvaluatePositionNet(position, locals.evalTable);
 	if (staticScore >= beta) return staticScore;
