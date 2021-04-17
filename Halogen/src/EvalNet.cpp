@@ -1,4 +1,5 @@
 #include "EvalNet.h"
+#include "Endgame.h"
 
 using namespace UnitTestEvalNet;
 
@@ -8,15 +9,18 @@ int EvaluatePositionNet(const Position& position, EvalCacheTable& evalTable)
 
     if (!evalTable.GetEntry(position.GetZobristKey(), eval))
     {
-        eval = position.GetEvaluation();
-
-        NoPawnAdjustment(eval, position);
-        TempoAdjustment(eval, position);
+        if (!EndGameMatch(position, eval))
+        {
+            eval = position.GetEvaluation();
+            NoPawnAdjustment(eval, position);
+            TempoAdjustment(eval, position);
+            eval = std::min<int>(EVAL_MAX, std::max<int>(EVAL_MIN, eval));
+        }
 
         evalTable.AddEntry(position.GetZobristKey(), eval);
     }
 
-    return std::min<int>(EVAL_MAX, std::max<int>(EVAL_MIN, eval));
+    return eval;
 }
 
 bool DeadPosition(const Position& position)

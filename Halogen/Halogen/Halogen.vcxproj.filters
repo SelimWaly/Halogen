@@ -78,6 +78,9 @@
     <ClCompile Include="..\src\MoveList.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\src\Endgame.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\src\BitBoard.h">
@@ -141,6 +144,9 @@
       <Filter>Pyrrhic</Filter>
     </ClInclude>
     <ClInclude Include="..\src\MoveList.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\Endgame.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
