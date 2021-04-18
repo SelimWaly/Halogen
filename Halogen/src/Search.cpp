@@ -19,7 +19,7 @@ bool IsPV(int beta, int alpha);
 void AddScoreToTable(int Score, int alphaOriginal, const Position& position, int depthRemaining, int distanceFromRoot, int beta, Move bestMove);
 void UpdateBounds(const TTEntry& entry, int& alpha, int& beta);
 int TerminalScore(const Position& position, int distanceFromRoot);
-int extension(const Position & position, int alpha, int beta);
+int extension(const Position & position, Move move);
 void AddKiller(Move move, int distanceFromRoot, std::vector<std::array<Move, 2>>& KillerMoves);
 void AddHistory(const MoveGenerator& gen, const Move& move, SearchData& locals, int depthRemaining);
 void UpdatePV(Move move, int distanceFromRoot, std::vector<std::vector<Move>>& PvTable);
@@ -334,7 +334,7 @@ SearchResult NegaScout(Position& position, unsigned int initialDepth, int depthR
 
 		position.ApplyMove(move);
 		tTable.PreFetch(position.GetZobristKey());							//load the transposition into l1 cache. ~5% speedup
-		int extendedDepth = depthRemaining + extension(position, alpha, beta);
+		int extendedDepth = depthRemaining + extension(position, move);
 
 		//late move reductions
 		if (searchedMoves > 3)
@@ -510,12 +510,15 @@ bool CheckForRep(const Position& position, int distanceFromRoot)
 	return position.CheckForRep(distanceFromRoot, 3);
 }
 
-int extension(const Position& position, int alpha, int beta)
+int extension(const Position& position, Move move)
 {
 	int extension = 0;
 
 	if (IsSquareThreatened(position, position.GetKing(position.GetTurn()), position.GetTurn()))	
 		extension += 1;
+
+	if (move.IsCapture() && GetBitCount(position.GetAllPieces()) < 8)
+		extension += 2;
 
 	return extension;
 }
