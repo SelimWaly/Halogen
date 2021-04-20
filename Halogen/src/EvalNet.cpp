@@ -91,7 +91,7 @@ void ComplexityAdjustment(int& eval, const Position& position)
     if (abs(nonPawnMaterial) < 4)
         complexity = GetBitCount(position.GetPieceBB(PAWN, stronger)) * 32;
     else
-        complexity = 128 + GetBitCount(position.GetPieceBB(PAWN, stronger)) * 16;
+        complexity = 256;
 
     int scale = complexity + (256 - complexity) * (phase) / 256;
     eval = eval * scale / 256;
