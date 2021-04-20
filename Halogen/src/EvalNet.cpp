@@ -81,8 +81,8 @@ void ComplexityAdjustment(int& eval, const Position& position)
 
     Players stronger = eval > 0 ? WHITE : BLACK;
 
-    int complexity = 128;
-    complexity += GetBitCount(position.GetPieceBB(PAWN, stronger)) * 16;
+    int complexity = 0;
+    complexity += GetBitCount(position.GetPieceBB(PAWN, stronger)) * 32;
 
     int scale = complexity + (256 - complexity) * (phase) / 256;
     eval = eval * scale / 256;
