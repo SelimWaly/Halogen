@@ -64,16 +64,21 @@ void TempoAdjustment(int& eval, const Position& position)
 void ComplexityAdjustment(int& eval, const Position& position)
 {
     static constexpr int PhaseValues[] = { 0, 1, 1, 2, 4, 0 };
+    static constexpr int PieceValies[] = { 0, 3, 3, 5, 9, 0 };
 
     //not actual max due to promotions!
     constexpr int maxPhase = PhaseValues[KNIGHT] * 4 + PhaseValues[BISHOP] * 4 + PhaseValues[ROOK] * 4 + PhaseValues[QUEEN] * 2;
 
     int phase = 0;
-    phase += PhaseValues[PAWN] * GetBitCount(position.GetPieceBB<PAWN>());
-    phase += PhaseValues[KNIGHT] * GetBitCount(position.GetPieceBB<KNIGHT>());
-    phase += PhaseValues[BISHOP] * GetBitCount(position.GetPieceBB<BISHOP>());
-    phase += PhaseValues[ROOK] * GetBitCount(position.GetPieceBB<ROOK>());
-    phase += PhaseValues[QUEEN] * GetBitCount(position.GetPieceBB<QUEEN>());
+    int nonPawnMaterial = 0;
+
+    for (int i = KNIGHT; i < QUEEN; i++)
+    {
+        auto white = GetBitCount(position.GetPieceBB(static_cast<PieceTypes>(i), WHITE));
+        auto black = GetBitCount(position.GetPieceBB(static_cast<PieceTypes>(i), WHITE));
+        phase += PhaseValues[i] * (white + black);
+        nonPawnMaterial += PieceValies[i] * (white - black);
+    }
 
     phase = (phase * 256 + (maxPhase / 2)) / maxPhase;
 
@@ -81,8 +86,12 @@ void ComplexityAdjustment(int& eval, const Position& position)
 
     Players stronger = eval > 0 ? WHITE : BLACK;
 
-    int complexity = 128;
-    complexity += GetBitCount(position.GetPieceBB(PAWN, stronger)) * 16;
+    int complexity;
+
+    if (abs(nonPawnMaterial) < 4)
+        complexity = GetBitCount(position.GetPieceBB(PAWN, stronger)) * 32;
+    else
+        complexity = 128 + GetBitCount(position.GetPieceBB(PAWN, stronger)) * 16;
 
     int scale = complexity + (256 - complexity) * (phase) / 256;
     eval = eval * scale / 256;
