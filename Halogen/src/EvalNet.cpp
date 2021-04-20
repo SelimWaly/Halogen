@@ -64,7 +64,7 @@ void TempoAdjustment(int& eval, const Position& position)
 void ComplexityAdjustment(int& eval, const Position& position)
 {
     static constexpr int PhaseValues[] = { 0, 1, 1, 2, 4, 0 };
-    static constexpr int PieceValies[] = { 0, 3, 3, 5, 9, 0 };
+    static constexpr int PieceValues[] = { 0, 3, 3, 5, 9, 0 };
 
     //not actual max due to promotions!
     constexpr int maxPhase = PhaseValues[KNIGHT] * 4 + PhaseValues[BISHOP] * 4 + PhaseValues[ROOK] * 4 + PhaseValues[QUEEN] * 2;
@@ -72,12 +72,12 @@ void ComplexityAdjustment(int& eval, const Position& position)
     int phase = 0;
     int nonPawnMaterial = 0;
 
-    for (int i = KNIGHT; i < QUEEN; i++)
+    for (int i = KNIGHT; i <= QUEEN; i++)
     {
-        auto white = GetBitCount(position.GetPieceBB(static_cast<PieceTypes>(i), WHITE));
-        auto black = GetBitCount(position.GetPieceBB(static_cast<PieceTypes>(i), WHITE));
+        int white = GetBitCount(position.GetPieceBB(static_cast<PieceTypes>(i), WHITE));
+        int black = GetBitCount(position.GetPieceBB(static_cast<PieceTypes>(i), BLACK));
         phase += PhaseValues[i] * (white + black);
-        nonPawnMaterial += PieceValies[i] * (white - black);
+        nonPawnMaterial += PieceValues[i] * (white - black);
     }
 
     phase = (phase * 256 + (maxPhase / 2)) / maxPhase;
