@@ -10,8 +10,8 @@ int EvaluatePositionNet(const Position& position, EvalCacheTable& evalTable)
     {
         eval = position.GetEvaluation();
 
-        NoPawnAdjustment(eval, position);
         TempoAdjustment(eval, position);
+        ComplexityAdjustment(eval, position);
 
         evalTable.AddEntry(position.GetZobristKey(), eval);
     }
@@ -61,12 +61,31 @@ void TempoAdjustment(int& eval, const Position& position)
     eval += position.GetTurn() == WHITE ? TEMPO : -TEMPO;
 }
 
-void NoPawnAdjustment(int& eval, const Position& position)
+void ComplexityAdjustment(int& eval, const Position& position)
 {
-    if (eval > 0 && position.GetPieceBB(PAWN, WHITE) == 0)
-        eval /= 2;
-    if (eval < 0 && position.GetPieceBB(PAWN, BLACK) == 0)
-        eval /= 2;
+    static constexpr int PhaseValues[] = { 0, 1, 1, 2, 4, 0 };
+
+    //not actual max due to promotions!
+    constexpr int maxPhase = PhaseValues[KNIGHT] * 4 + PhaseValues[BISHOP] * 4 + PhaseValues[ROOK] * 4 + PhaseValues[QUEEN] * 2;
+
+    int phase = 0;
+    phase += PhaseValues[PAWN] * GetBitCount(position.GetPieceBB<PAWN>());
+    phase += PhaseValues[KNIGHT] * GetBitCount(position.GetPieceBB<KNIGHT>());
+    phase += PhaseValues[BISHOP] * GetBitCount(position.GetPieceBB<BISHOP>());
+    phase += PhaseValues[ROOK] * GetBitCount(position.GetPieceBB<ROOK>());
+    phase += PhaseValues[QUEEN] * GetBitCount(position.GetPieceBB<QUEEN>());
+
+    phase = (phase * 256 + (maxPhase / 2)) / maxPhase;
+
+    //phase now represents a value from 0 for king-pawn endgames and 256 for the opening position.
+
+    Players stronger = eval > 0 ? WHITE : BLACK;
+
+    int complexity = 128;
+    complexity += GetBitCount(position.GetPieceBB(PAWN, stronger)) * 16;
+
+    int scale = complexity + (256 - complexity) * (phase) / 256;
+    eval = eval * scale / 256;
 }
 
 }
