@@ -63,38 +63,26 @@ void TempoAdjustment(int& eval, const Position& position)
 
 void ComplexityAdjustment(int& eval, const Position& position)
 {
-    static constexpr int PhaseValues[] = { 0, 1, 1, 2, 4, 0 };
     static constexpr int PieceValues[] = { 0, 3, 3, 5, 9, 0 };
 
-    //not actual max due to promotions!
-    constexpr int maxPhase = PhaseValues[KNIGHT] * 4 + PhaseValues[BISHOP] * 4 + PhaseValues[ROOK] * 4 + PhaseValues[QUEEN] * 2;
-
-    int phase = 0;
     int nonPawnMaterial = 0;
 
     for (int i = KNIGHT; i <= QUEEN; i++)
     {
         int white = GetBitCount(position.GetPieceBB(static_cast<PieceTypes>(i), WHITE));
         int black = GetBitCount(position.GetPieceBB(static_cast<PieceTypes>(i), BLACK));
-        phase += PhaseValues[i] * (white + black);
         nonPawnMaterial += PieceValues[i] * (white - black);
     }
 
-    phase = (phase * 256 + (maxPhase / 2)) / maxPhase;
-
-    //phase now represents a value from 0 for king-pawn endgames and 256 for the opening position.
-
     Players stronger = eval > 0 ? WHITE : BLACK;
 
-    int complexity;
+    int complexity = 128;
+    complexity += GetBitCount(position.GetPieceBB(PAWN, stronger)) * 16;
 
-    if (abs(nonPawnMaterial) < 4)
-        complexity = GetBitCount(position.GetPieceBB(PAWN, stronger)) * 32;
-    else
-        complexity = 128 + GetBitCount(position.GetPieceBB(PAWN, stronger)) * 16;
-
-    int scale = complexity + (256 - complexity) * (phase) / 256;
-    eval = eval * scale / 256;
+    if (position.GetPieceBB(PAWN, stronger) == 0 && abs(nonPawnMaterial) < 4)
+        eval /= 16;
+    if (position.GetPieceBB(PAWN, stronger) == 0)
+        eval /= 2;
 }
 
 }
