@@ -141,6 +141,12 @@ SearchResult AspirationWindowSearch(Position& position, int depth, int prevScore
 
 	while (true)
 	{
+		if (alpha < EVAL_MIN)
+			alpha = MATED;
+
+		if (beta > EVAL_MAX)
+			beta = MATE;
+
 		position.ResetSeldepth();
 		search = NegaScout(position, depth, depth, alpha, beta, position.GetTurn() ? 1 : -1, 0, false, locals, sharedData);
 

@@ -3,7 +3,6 @@
 enum EndGamePatterns
 {
 	KXvK,
-	KQvKR,
 };
 
 constexpr std::array<int, N_SQUARES> CenterDistance = {
@@ -30,6 +29,18 @@ constexpr auto ChebyshevDistanceInit()
 
 constexpr auto ChebyshevDistance = ChebyshevDistanceInit();
 
+template <Players side>
+int MaterialScore(const Position& position)
+{
+	int material = 0;
+	material += PieceValues[PAWN] * GetBitCount(position.GetPieceBB(PAWN, side));
+	material += PieceValues[KNIGHT] * GetBitCount(position.GetPieceBB(KNIGHT, side));
+	material += PieceValues[BISHOP] * GetBitCount(position.GetPieceBB(BISHOP, side));
+	material += PieceValues[ROOK] * GetBitCount(position.GetPieceBB(ROOK, side));
+	material += PieceValues[QUEEN] * GetBitCount(position.GetPieceBB(QUEEN, side));
+	return material;
+}
+
 template <EndGamePatterns, Players stronger>
 struct EndGame
 {
@@ -46,79 +57,31 @@ struct EndGame<KXvK, stronger>
 		Square strongKing = position.GetKing(stronger);
 		Square weakKing = position.GetKing(!stronger);
 		
-		int score = 100 * CenterDistance[weakKing] - 50 * ChebyshevDistance[strongKing][weakKing] + 200;
-		assert(0 <= score && score <= 700);
+		int score = MaterialScore<stronger>(position)
+			+ 20 * CenterDistance[weakKing] 
+			- 20 * ChebyshevDistance[strongKing][weakKing];
 
-		score += EVAL_MAX + 1;
-		return stronger == WHITE ? score : -score;
-	}
-};
-
-template <Players stronger>
-struct EndGame<KQvKR, stronger>
-{
-	int operator()(const Position& position) const
-	{
-		//Force weaker king to the edges and corners
-		//Keep stronger king close to weaker king
-
-		Square strongKing = position.GetKing(stronger);
-		Square weakKing = position.GetKing(!stronger);
-
-		int score = 100 * CenterDistance[weakKing] - 50 * ChebyshevDistance[strongKing][weakKing] + 200;
-		assert(0 <= score && score <= 700);
-
+		score = std::min<int>(score + KNOWN_WIN, EVAL_MAX);
 		return stronger == WHITE ? score : -score;
 	}
 };
 
 bool EndGameMatch(const Position& position, int& eval)
 {
-	int count = GetBitCount(position.GetAllPieces());
+	Players weaker = N_PLAYERS;
 
-	if (count == 3)
+	if (position.GetPiecesColour(BLACK) == position.GetPieceBB(KING, BLACK))
+		weaker = BLACK;
+
+	if (position.GetPiecesColour(WHITE) == position.GetPieceBB(KING, WHITE))
+		weaker = WHITE;
+
+	if (weaker != N_PLAYERS)
 	{
-		//KRvK
-		if (position.GetPieceBB(WHITE_ROOK))
+		//KRvK, KQvK with stronger side optionally having additional material
+		if (position.GetPieceBB(ROOK, !weaker) || position.GetPieceBB(QUEEN, !weaker))
 		{
 			eval = EndGame<KXvK, WHITE>()(position);
-			return true;
-		}
-
-		if (position.GetPieceBB(BLACK_ROOK))
-		{
-			eval = EndGame<KXvK, BLACK>()(position);
-			return true;
-		}
-
-		//KQvK
-		if (position.GetPieceBB(WHITE_QUEEN))
-		{
-
-			eval = EndGame<KXvK, WHITE>()(position);
-			return true;
-		}
-
-		if (position.GetPieceBB(BLACK_QUEEN))
-		{
-			eval = EndGame<KXvK, BLACK>()(position);
-			return true;
-		}
-	}
-
-	if (count == 4)
-	{
-		//KQvKR
-		if (position.GetPieceBB(WHITE_QUEEN) && position.GetPieceBB(BLACK_ROOK))
-		{
-			eval = EndGame<KQvKR, WHITE>()(position);
-			return true;
-		}
-
-		//KQvKR
-		if (position.GetPieceBB(BLACK_QUEEN) && position.GetPieceBB(WHITE_ROOK))
-		{
-			eval = EndGame<KQvKR, BLACK>()(position);
 			return true;
 		}
 	}

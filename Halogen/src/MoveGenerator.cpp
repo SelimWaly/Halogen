@@ -144,9 +144,6 @@ void selection_sort(MoveList& v)
 	}
 }
 
-constexpr int PieceValues[] = { 91, 532, 568, 715, 1279, 5000,
-								91, 532, 568, 715, 1279, 5000 };
-
 static uint64_t AttackersToSq(Position& position, Square sq)
 {
 	uint64_t pawn_mask = (position.GetPieceBB(PAWN, WHITE) & PawnAttacks[BLACK][sq]);
