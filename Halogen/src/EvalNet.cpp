@@ -63,10 +63,21 @@ void TempoAdjustment(int& eval, const Position& position)
 
 void NoPawnAdjustment(int& eval, const Position& position)
 {
-    if (eval > 0 && position.GetPieceBB(PAWN, WHITE) == 0)
-        eval /= 2;
-    if (eval < 0 && position.GetPieceBB(PAWN, BLACK) == 0)
-        eval /= 2;
+    static constexpr int PieceValues[] = { 0, 3, 3, 5, 9, 0 };
+
+    int nonPawnMaterial = 0;
+
+    for (int i = KNIGHT; i <= QUEEN; i++)
+    {
+        int white = GetBitCount(position.GetPieceBB(static_cast<PieceTypes>(i), WHITE));
+        int black = GetBitCount(position.GetPieceBB(static_cast<PieceTypes>(i), BLACK));
+        nonPawnMaterial += PieceValues[i] * (white - black);
+    }
+
+    Players stronger = eval > 0 ? WHITE : BLACK;
+
+    if (abs(nonPawnMaterial) < 4 && position.GetPieceBB(PAWN, stronger) == 0)
+        eval /= 16;
 }
 
 }
