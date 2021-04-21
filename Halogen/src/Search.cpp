@@ -559,9 +559,9 @@ bool IsPV(int beta, int alpha)
 void AddScoreToTable(int Score, int alphaOriginal, const Position& position, int depthRemaining, int distanceFromRoot, int beta, Move bestMove)
 {
 	if (Score <= alphaOriginal)
-		tTable.AddEntry(bestMove, position.GetZobristKey(), Score, depthRemaining, position.GetTurnCount(), distanceFromRoot, EntryType::UPPERBOUND);	//mate score adjustent is done inside this function
+		tTable.AddEntry(bestMove, position.GetZobristKey(), alphaOriginal, depthRemaining, position.GetTurnCount(), distanceFromRoot, EntryType::UPPERBOUND);	//mate score adjustent is done inside this function
 	else if (Score >= beta)
-		tTable.AddEntry(bestMove, position.GetZobristKey(), Score, depthRemaining, position.GetTurnCount(), distanceFromRoot, EntryType::LOWERBOUND);
+		tTable.AddEntry(bestMove, position.GetZobristKey(), beta, depthRemaining, position.GetTurnCount(), distanceFromRoot, EntryType::LOWERBOUND);
 	else
 		tTable.AddEntry(bestMove, position.GetZobristKey(), Score, depthRemaining, position.GetTurnCount(), distanceFromRoot, EntryType::EXACT);
 }
