@@ -151,7 +151,6 @@ SearchResult AspirationWindowSearch(Position& position, int depth, int prevScore
 		if (search.GetScore() <= alpha)
 		{
 			sharedData.ReportResult(depth, locals.limits.ElapsedTime(), alpha, alpha, beta, position, search.GetMove(), locals);
-			beta = (alpha + beta) / 2;
 			alpha = std::max<int>(MATED, alpha - delta);
 		}
 
