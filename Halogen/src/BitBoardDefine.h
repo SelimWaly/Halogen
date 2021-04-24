@@ -460,8 +460,8 @@ constexpr bool mayMove(unsigned int from, unsigned int to, uint64_t pieces)
 
 const int MAX_DEPTH = 100;
 
-constexpr int PieceValues[] = { 91, 532, 568, 715, 1279, 0,
-								91, 532, 568, 715, 1279, 0 };
+constexpr int PieceValues[] = { 91, 532, 568, 715, 1279, 5000,
+								91, 532, 568, 715, 1279, 5000 };
 
 //--------------------------------------------------------------------------
 //Below code adapted with permission from Terje, author of Weiss.
