@@ -54,6 +54,7 @@ public:
 	EvalCacheTable evalTable;
 	SearchLimits limits;
 	std::array<MoveList, MAX_DEPTH> moveList;
+	std::array<Move, MAX_DEPTH> singularExclude;
 
 	void AddNode() { nodes++; }
 	void AddTbHit() { tbHits++; }

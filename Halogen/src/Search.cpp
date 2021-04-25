@@ -242,6 +242,8 @@ SearchResult NegaScout(Position& position, unsigned int initialDepth, int depthR
 		}
 	}
 
+	bool singular = false;
+
 	//Query the transpotition table
 	if (!IsPV(beta, alpha)) 
 	{
@@ -253,6 +255,12 @@ SearchResult NegaScout(Position& position, unsigned int initialDepth, int depthR
 			if (!position.CheckForRep(distanceFromRoot, 2))	//Don't take scores from the TT if there's a two-fold repitition
 				if (UseTransposition(entry, alpha, beta)) 
 					return SearchResult(entry.GetScore(), entry.GetMove());
+		}
+
+		if (CheckEntry(entry, position.GetZobristKey(), depthRemaining - 2) && 
+			entry.GetCutoff() == EntryType::LOWERBOUND)
+		{
+			singular = true;
 		}
 	}
 
@@ -319,7 +327,16 @@ SearchResult NegaScout(Position& position, unsigned int initialDepth, int depthR
 	for (searchedMoves = 0; gen.Next(move); searchedMoves++)
 	{
 		if (distanceFromRoot == 0 && sharedData.MultiPVExcludeMove(move))
+		{
+			searchedMoves--;
 			continue;
+		}
+
+		if (move == locals.singularExclude[distanceFromRoot])
+		{
+			searchedMoves--;
+			continue;
+		}
 
 		noLegalMoves = false;
 		locals.AddNode();
@@ -332,9 +349,27 @@ SearchResult NegaScout(Position& position, unsigned int initialDepth, int depthR
 		if (IsFutile(move, beta, alpha, position, InCheck) && searchedMoves > 0 && FutileNode && Score > TBLossIn(MAX_DEPTH))	//Possibly stop futility pruning if alpha or beta are close to mate scores
 			continue;
 
+		int extendedDepth = depthRemaining;
+
+		if (depthRemaining >= 8 &&
+			gen.GetTTMove() == move &&
+			singular)
+		{
+			int sbeta = beta - depthRemaining;
+			int sdepth = depthRemaining / 2;
+
+			locals.singularExclude[distanceFromRoot] = move;
+			auto result = NegaScout(position, initialDepth, sdepth, sbeta - 1, sbeta, colour, distanceFromRoot, true, locals, sharedData);
+			locals.singularExclude[distanceFromRoot] = Move();
+
+			if (result.GetScore() < sbeta)
+				extendedDepth++;
+		}
+
 		position.ApplyMove(move);
 		tTable.PreFetch(position.GetZobristKey());							//load the transposition into l1 cache. ~5% speedup
-		int extendedDepth = depthRemaining + extension(position, alpha, beta);
+
+		extendedDepth += extension(position, alpha, beta);
 
 		//late move reductions
 		if (searchedMoves > 3)
@@ -384,7 +419,7 @@ SearchResult NegaScout(Position& position, unsigned int initialDepth, int depthR
 
 	Score = std::min(Score, MaxScore);
 
-	if (!locals.limits.CheckTimeLimit() && !sharedData.ThreadAbort(initialDepth))
+	if (!locals.limits.CheckTimeLimit() && !sharedData.ThreadAbort(initialDepth) && locals.singularExclude[distanceFromRoot].IsUninitialized())
 		AddScoreToTable(Score, alpha, position, depthRemaining, distanceFromRoot, beta, bestMove);
 
 	return SearchResult(Score, bestMove);

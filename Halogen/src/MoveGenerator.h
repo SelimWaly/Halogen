@@ -23,6 +23,7 @@ public:
 	void AdjustHistory(const Move& move, SearchData& Locals, int depthRemaining) const;
 
 	void SkipQuiets();
+	Move GetTTMove() { return TTmove; }
 
 private:
 	void OrderMoves(MoveList& moves);
