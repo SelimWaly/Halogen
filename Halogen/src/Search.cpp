@@ -354,7 +354,7 @@ SearchResult NegaScout(Position& position, unsigned int initialDepth, int depthR
 			&& move == entry.GetMove()
 			&& singular)
 		{
-			int sbeta = beta - depthRemaining;
+			int sbeta = beta - depthRemaining * 2;
 			int sdepth = depthRemaining / 2;
 
 			auto result = NegaScout(position, initialDepth, sdepth, sbeta - 1, sbeta, colour, distanceFromRoot, true, locals, sharedData, move);
