@@ -245,23 +245,20 @@ SearchResult NegaScout(Position& position, unsigned int initialDepth, int depthR
 	bool singular = false;
 
 	//Query the transpotition table
-	if (!IsPV(beta, alpha)) 
+	TTEntry entry = tTable.GetEntry(position.GetZobristKey(), distanceFromRoot);
+	if (!IsPV(beta, alpha) && CheckEntry(entry, position.GetZobristKey(), depthRemaining) )
 	{
-		TTEntry entry = tTable.GetEntry(position.GetZobristKey(), distanceFromRoot);
-		if (CheckEntry(entry, position.GetZobristKey(), depthRemaining))
-		{
-			tTable.ResetAge(position.GetZobristKey(), position.GetTurnCount(), distanceFromRoot);
+		tTable.ResetAge(position.GetZobristKey(), position.GetTurnCount(), distanceFromRoot);
 
-			if (!position.CheckForRep(distanceFromRoot, 2))	//Don't take scores from the TT if there's a two-fold repitition
-				if (UseTransposition(entry, alpha, beta)) 
-					return SearchResult(entry.GetScore(), entry.GetMove());
-		}
+		if (!position.CheckForRep(distanceFromRoot, 2))	//Don't take scores from the TT if there's a two-fold repitition
+			if (UseTransposition(entry, alpha, beta)) 
+				return SearchResult(entry.GetScore(), entry.GetMove());
+	}
 
-		if (CheckEntry(entry, position.GetZobristKey(), depthRemaining - 2) && 
-			entry.GetCutoff() == EntryType::LOWERBOUND)
-		{
-			singular = true;
-		}
+	if (CheckEntry(entry, position.GetZobristKey(), depthRemaining - 2) && 
+		entry.GetCutoff() == EntryType::LOWERBOUND)
+	{
+		singular = true;
 	}
 
 	bool InCheck = IsInCheck(position);
