@@ -80,6 +80,11 @@ bool Move::operator==(const Move& rhs) const
 	return (data == rhs.data);
 }
 
+bool Move::operator!=(const Move& rhs) const
+{
+	return !(*this == rhs);
+}
+
 bool Move::IsUninitialized() const
 {
 	return (data == 0);

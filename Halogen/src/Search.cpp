@@ -35,7 +35,7 @@ Move GetTBMove(unsigned int result);
 
 void SearchPosition(Position position, ThreadSharedData& sharedData, unsigned int threadID);
 SearchResult AspirationWindowSearch(Position& position, int depth, int prevScore, SearchData& locals, ThreadSharedData& sharedData, unsigned int threadID);
-SearchResult NegaScout(Position& position, unsigned int initialDepth, int depthRemaining, int alpha, int beta, int colour, unsigned int distanceFromRoot, bool allowedNull, SearchData& locals, ThreadSharedData& sharedData);
+SearchResult NegaScout(Position& position, unsigned int initialDepth, int depthRemaining, int alpha, int beta, int colour, unsigned int distanceFromRoot, bool allowedNull, SearchData& locals, ThreadSharedData& sharedData, Move singularExclude = {});
 void UpdateAlpha(int Score, int& a, const Move& move, unsigned int distanceFromRoot, SearchData& locals);
 void UpdateScore(int newScore, int& Score, Move& bestMove, const Move& move);
 SearchResult Quiescence(Position& position, unsigned int initialDepth, int alpha, int beta, int colour, unsigned int distanceFromRoot, int depthRemaining, SearchData& locals, ThreadSharedData& sharedData);
@@ -167,7 +167,7 @@ SearchResult AspirationWindowSearch(Position& position, int depth, int prevScore
 	return search;
 }
 
-SearchResult NegaScout(Position& position, unsigned int initialDepth, int depthRemaining, int alpha, int beta, int colour, unsigned int distanceFromRoot, bool allowedNull, SearchData& locals, ThreadSharedData& sharedData)
+SearchResult NegaScout(Position& position, unsigned int initialDepth, int depthRemaining, int alpha, int beta, int colour, unsigned int distanceFromRoot, bool allowedNull, SearchData& locals, ThreadSharedData& sharedData, Move singularExclude)
 {
 	position.ReportDepth(distanceFromRoot);
 
@@ -242,10 +242,12 @@ SearchResult NegaScout(Position& position, unsigned int initialDepth, int depthR
 		}
 	}
 
+	bool singular = false;
+	TTEntry entry = tTable.GetEntry(position.GetZobristKey(), distanceFromRoot);
+
 	//Query the transpotition table
 	if (!IsPV(beta, alpha)) 
 	{
-		TTEntry entry = tTable.GetEntry(position.GetZobristKey(), distanceFromRoot);
 		if (CheckEntry(entry, position.GetZobristKey(), depthRemaining))
 		{
 			tTable.ResetAge(position.GetZobristKey(), position.GetTurnCount(), distanceFromRoot);
@@ -255,6 +257,10 @@ SearchResult NegaScout(Position& position, unsigned int initialDepth, int depthR
 					return SearchResult(entry.GetScore(), entry.GetMove());
 		}
 	}
+
+	if (CheckEntry(entry, position.GetZobristKey(), depthRemaining - 2))
+		if (entry.GetCutoff() == EntryType::LOWERBOUND)
+			singular = true;
 
 	bool InCheck = IsInCheck(position);
 
@@ -319,7 +325,16 @@ SearchResult NegaScout(Position& position, unsigned int initialDepth, int depthR
 	for (searchedMoves = 0; gen.Next(move); searchedMoves++)
 	{
 		if (distanceFromRoot == 0 && sharedData.MultiPVExcludeMove(move))
+		{
+			searchedMoves--;
 			continue;
+		}
+
+		if (move == singularExclude)
+		{
+			searchedMoves--;
+			continue;
+		}
 
 		noLegalMoves = false;
 		locals.AddNode();
@@ -332,9 +347,26 @@ SearchResult NegaScout(Position& position, unsigned int initialDepth, int depthR
 		if (IsFutile(move, beta, alpha, position, InCheck) && searchedMoves > 0 && FutileNode && Score > TBLossIn(MAX_DEPTH))	//Possibly stop futility pruning if alpha or beta are close to mate scores
 			continue;
 
+		int extendedDepth = depthRemaining;
+
+		// Singular extensions
+		if (   depthRemaining >= 8
+			&& move == entry.GetMove()
+			&& singular)
+		{
+			int sbeta = beta - depthRemaining;
+			int sdepth = depthRemaining / 2;
+
+			auto result = NegaScout(position, initialDepth, sdepth, sbeta - 1, sbeta, colour, distanceFromRoot, true, locals, sharedData, move);
+
+			if (result.GetScore() < sbeta)
+				extendedDepth++;
+		}
+
 		position.ApplyMove(move);
 		tTable.PreFetch(position.GetZobristKey());							//load the transposition into l1 cache. ~5% speedup
-		int extendedDepth = depthRemaining + extension(position, alpha, beta);
+
+		extendedDepth += extension(position, alpha, beta);
 
 		//late move reductions
 		if (searchedMoves > 3)
