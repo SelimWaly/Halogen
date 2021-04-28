@@ -352,7 +352,8 @@ SearchResult NegaScout(Position& position, unsigned int initialDepth, int depthR
 		// Singular extensions
 		if (   depthRemaining >= 8
 			&& move == entry.GetMove()
-			&& singular)
+			&& singular
+			&& singularExclude.IsUninitialized())
 		{
 			int sbeta = beta - depthRemaining * 2;
 			int sdepth = depthRemaining / 2;
