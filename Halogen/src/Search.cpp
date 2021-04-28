@@ -354,14 +354,15 @@ SearchResult NegaScout(Position& position, unsigned int initialDepth, int depthR
 			&& move == entry.GetMove()
 			&& singular
 			&& singularExclude.IsUninitialized()
-			&& distanceFromRoot > 0)
+			&& distanceFromRoot > 0
+			&& abs(entry.GetScore()) < TBWinIn(MAX_DEPTH))
 		{
-			int sbeta = entry.GetScore() - depthRemaining * 2;
+			int sbeta = entry.GetScore() - depthRemaining;
 			int sdepth = depthRemaining / 2;
 
 			auto result = NegaScout(position, initialDepth, sdepth, sbeta - 1, sbeta, colour, distanceFromRoot, true, locals, sharedData, move);
 
-			if (result.GetScore() < sbeta)
+			if (result.GetScore() < sbeta && abs(result.GetScore()) < MATE)
 				extendedDepth++;
 		}
 
