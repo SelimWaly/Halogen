@@ -246,7 +246,7 @@ SearchResult NegaScout(Position& position, unsigned int initialDepth, int depthR
 	TTEntry entry = tTable.GetEntry(position.GetZobristKey(), distanceFromRoot);
 
 	//Query the transpotition table
-	if (!IsPV(beta, alpha)) 
+	if (!IsPV(beta, alpha) && singularExclude.IsUninitialized()) 
 	{
 		if (CheckEntry(entry, position.GetZobristKey(), depthRemaining))
 		{
@@ -418,7 +418,7 @@ SearchResult NegaScout(Position& position, unsigned int initialDepth, int depthR
 
 	Score = std::min(Score, MaxScore);
 
-	if (!locals.limits.CheckTimeLimit() && !sharedData.ThreadAbort(initialDepth))
+	if (!locals.limits.CheckTimeLimit() && !sharedData.ThreadAbort(initialDepth) && singularExclude.IsUninitialized())
 		AddScoreToTable(Score, alpha, position, depthRemaining, distanceFromRoot, beta, bestMove);
 
 	return SearchResult(Score, bestMove);
