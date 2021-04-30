@@ -47,3 +47,10 @@ void FixedVector<T>::erase(size_t index)
 	moveCount--;
 }
 
+template<typename T>
+void FixedVector<T>::insert(iterator position, const_iterator first, const_iterator last)
+{
+	std::copy(first, last, position);
+	moveCount += (last - first) - (end() - position);
+}
+

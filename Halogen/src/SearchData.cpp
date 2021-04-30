@@ -4,7 +4,6 @@ TranspositionTable tTable;
 
 SearchData::SearchData(const SearchLimits& Limits) : limits(Limits)
 {
-	PvTable.resize(MAX_DEPTH);
 	KillerMoves.resize(MAX_DEPTH);
 }
 
@@ -134,10 +133,10 @@ void ThreadSharedData::PrintSearchInfo(unsigned int depth, double Time, bool isC
 	time controls.
 	*/
 
-	std::vector<Move> pv = locals.PvTable[0];
+	BasicMoveList pv = locals.PV;
 
 	if (pv.size() == 0)
-		pv.push_back(move);
+		pv.Append(move);
 
 	std::stringstream ss;
 

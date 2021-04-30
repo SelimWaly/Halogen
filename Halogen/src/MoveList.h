@@ -58,11 +58,13 @@ public:
 	void clear();
 	void erase(size_t index);
 
+	void insert(iterator position, const_iterator first, const_iterator last);
+
 	const T& operator[](size_t index) const { return list[index]; }
 	      T& operator[](size_t index)       { return list[index]; }
 
 private:
-	size_t moveCount;
+	size_t moveCount = 0;
 };
 
 template <typename T>

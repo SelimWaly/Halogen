@@ -3,8 +3,6 @@
 MoveGenerator::MoveGenerator(Position& Position, int DistanceFromRoot, const SearchData& Locals, bool Quiescence) :
 	position(Position), distanceFromRoot(DistanceFromRoot), locals(Locals), quiescence(Quiescence)
 {
-	moveList.clear();
-
 	if (quiescence)
 		stage = Stage::GEN_LOUD;
 	else
@@ -170,7 +168,7 @@ static uint64_t GetLeastValuableAttacker(Position& position, uint64_t attackers,
 		capturing = Piece(PieceTypes(i), side);
 		uint64_t pieces = position.GetPieceBB(capturing) & attackers;
 		if (pieces)
-			return pieces & ~pieces + 1;
+			return pieces & (~pieces + 1);
 	}
 	return 0;
 }

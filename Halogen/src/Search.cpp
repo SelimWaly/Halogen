@@ -12,10 +12,10 @@ bool IsPV(int beta, int alpha);
 void AddScoreToTable(int Score, int alphaOriginal, const Position& position, int depthRemaining, int distanceFromRoot, int beta, Move bestMove);
 void UpdateBounds(const TTEntry& entry, int& alpha, int& beta);
 int TerminalScore(const Position& position, int distanceFromRoot);
-int extension(const Position & position, int alpha, int beta);
+int extension(const Position & position);
 void AddKiller(Move move, int distanceFromRoot, std::vector<std::array<Move, 2>>& KillerMoves);
 void AddHistory(const MoveGenerator& gen, const Move& move, SearchData& locals, int depthRemaining);
-void UpdatePV(Move move, int distanceFromRoot, std::vector<std::vector<Move>>& PvTable);
+void UpdatePV(Move move, const BasicMoveList& line, BasicMoveList& PV);
 int Reduction(int depth, int i);
 constexpr int matedIn(int distanceFromRoot);
 constexpr int mateIn(int distanceFromRoot);
@@ -28,10 +28,10 @@ Move GetTBMove(unsigned int result);
 
 void SearchPosition(Position position, ThreadSharedData& sharedData, unsigned int threadID);
 SearchResult AspirationWindowSearch(Position& position, int depth, int prevScore, SearchData& locals, ThreadSharedData& sharedData, unsigned int threadID);
-SearchResult NegaScout(Position& position, unsigned int initialDepth, int depthRemaining, int alpha, int beta, int colour, unsigned int distanceFromRoot, bool allowedNull, SearchData& locals, ThreadSharedData& sharedData);
-void UpdateAlpha(int Score, int& a, const Move& move, unsigned int distanceFromRoot, SearchData& locals);
+SearchResult NegaScout(Position& position, unsigned int initialDepth, int depthRemaining, int alpha, int beta, int colour, unsigned int distanceFromRoot, bool allowedNull, SearchData& locals, ThreadSharedData& sharedData, BasicMoveList& PV);
+void UpdateAlpha(int Score, int& a, const Move& move, const BasicMoveList& line, BasicMoveList& PV);
 void UpdateScore(int newScore, int& Score, Move& bestMove, const Move& move);
-SearchResult Quiescence(Position& position, unsigned int initialDepth, int alpha, int beta, int colour, unsigned int distanceFromRoot, int depthRemaining, SearchData& locals, ThreadSharedData& sharedData);
+SearchResult Quiescence(Position& position, unsigned int initialDepth, int alpha, int beta, int colour, unsigned int distanceFromRoot, int depthRemaining, SearchData& locals, ThreadSharedData& sharedData, BasicMoveList& PV);
 
 void InitSearch();
 
@@ -54,7 +54,6 @@ uint64_t SearchThread(Position position, SearchParameters parameters, const Sear
 
 	//Limit the MultiPV setting to be at most the number of legal moves
 	BasicMoveList moves;
-	moves.clear();
 	LegalMoves(position, moves);
 	parameters.multiPV = std::min<int>(parameters.multiPV, moves.size());
 
@@ -136,7 +135,7 @@ SearchResult AspirationWindowSearch(Position& position, int depth, int prevScore
 	while (true)
 	{
 		position.ResetSeldepth();
-		search = NegaScout(position, depth, depth, alpha, beta, position.GetTurn() ? 1 : -1, 0, false, locals, sharedData);
+		search = NegaScout(position, depth, depth, alpha, beta, position.GetTurn() ? 1 : -1, 0, false, locals, sharedData, locals.PV);
 
 		if (alpha < search.GetScore() && search.GetScore() < beta) break;
 		if (sharedData.ThreadAbort(depth)) break;
@@ -161,12 +160,12 @@ SearchResult AspirationWindowSearch(Position& position, int depth, int prevScore
 	return search;
 }
 
-SearchResult NegaScout(Position& position, unsigned int initialDepth, int depthRemaining, int alpha, int beta, int colour, unsigned int distanceFromRoot, bool allowedNull, SearchData& locals, ThreadSharedData& sharedData)
+SearchResult NegaScout(Position& position, unsigned int initialDepth, int depthRemaining, int alpha, int beta, int colour, unsigned int distanceFromRoot, bool allowedNull, SearchData& locals, ThreadSharedData& sharedData, BasicMoveList& PV)
 {
+	PV.clear();
 	position.ReportDepth(distanceFromRoot);
 
 	if (distanceFromRoot >= MAX_DEPTH) return 0;						//Have we reached max depth?
-	locals.PvTable[distanceFromRoot].clear();
 
 	//See if we should abort the search
 	if (initialDepth > 1 && locals.limits.CheckTimeLimit()) return -1;	//Am I out of time?
@@ -179,6 +178,7 @@ SearchResult NegaScout(Position& position, unsigned int initialDepth, int depthR
 	
 	int Score = LowINF;
 	int MaxScore = HighINF;
+	BasicMoveList line;
 
 	//Probe TB in search
 	if (position.GetFiftyMoveCount() == 0 
@@ -255,7 +255,8 @@ SearchResult NegaScout(Position& position, unsigned int initialDepth, int depthR
 	//Drop into quiescence search
 	if (depthRemaining <= 0 && !InCheck)
 	{ 
-		return Quiescence(position, initialDepth, alpha, beta, colour, distanceFromRoot, depthRemaining, locals, sharedData);
+		//we pass PV instead of the line otherwise we lose the information
+		return Quiescence(position, initialDepth, alpha, beta, colour, distanceFromRoot, depthRemaining, locals, sharedData, PV);
 	}
 
 	int staticScore = colour * EvaluatePositionNet(position, locals.evalTable); 
@@ -269,7 +270,7 @@ SearchResult NegaScout(Position& position, unsigned int initialDepth, int depthR
 		unsigned int reduction = Null_constant + depthRemaining / Null_depth_quotent + std::min(3, (staticScore - beta) / Null_beta_quotent);
 
 		position.ApplyNullMove();
-		int score = -NegaScout(position, initialDepth, depthRemaining - reduction - 1, -beta, -beta + 1, -colour, distanceFromRoot + 1, false, locals, sharedData).GetScore();
+		int score = -NegaScout(position, initialDepth, depthRemaining - reduction - 1, -beta, -beta + 1, -colour, distanceFromRoot + 1, false, locals, sharedData, line).GetScore();
 		position.RevertNullMove();
 
 		if (score >= beta)
@@ -277,7 +278,7 @@ SearchResult NegaScout(Position& position, unsigned int initialDepth, int depthR
 			if (beta < matedIn(MAX_DEPTH) || depthRemaining >= 10)	//TODO: I'm not sure about this first condition
 			{
 				//Do verification search for high depths
-				SearchResult result = NegaScout(position, initialDepth, depthRemaining - reduction - 1, beta - 1, beta, colour, distanceFromRoot, false, locals, sharedData);
+				SearchResult result = NegaScout(position, initialDepth, depthRemaining - reduction - 1, beta - 1, beta, colour, distanceFromRoot, false, locals, sharedData, line);
 				if (result.GetScore() >= beta)
 					return result;
 			}
@@ -328,7 +329,7 @@ SearchResult NegaScout(Position& position, unsigned int initialDepth, int depthR
 
 		position.ApplyMove(move);
 		tTable.PreFetch(position.GetZobristKey());							//load the transposition into l1 cache. ~5% speedup
-		int extendedDepth = depthRemaining + extension(position, alpha, beta);
+		int extendedDepth = depthRemaining + extension(position);
 
 		//late move reductions
 		if (searchedMoves > 3)
@@ -340,7 +341,7 @@ SearchResult NegaScout(Position& position, unsigned int initialDepth, int depthR
 
 			reduction = std::max(0, reduction);
 
-			int score = -NegaScout(position, initialDepth, extendedDepth - 1 - reduction, -a - 1, -a, -colour, distanceFromRoot + 1, true, locals, sharedData).GetScore();
+			int score = -NegaScout(position, initialDepth, extendedDepth - 1 - reduction, -a - 1, -a, -colour, distanceFromRoot + 1, true, locals, sharedData, line).GetScore();
 
 			if (score <= a)
 			{
@@ -349,16 +350,16 @@ SearchResult NegaScout(Position& position, unsigned int initialDepth, int depthR
 			}
 		}
 
-		int newScore = -NegaScout(position, initialDepth, extendedDepth - 1, -b, -a, -colour, distanceFromRoot + 1, true, locals, sharedData).GetScore();
+		int newScore = -NegaScout(position, initialDepth, extendedDepth - 1, -b, -a, -colour, distanceFromRoot + 1, true, locals, sharedData, line).GetScore();
 		if (newScore > a && newScore < beta && searchedMoves >= 1)	//MultiPV issues here
 		{	
-			newScore = -NegaScout(position, initialDepth, extendedDepth - 1, -beta, -a, -colour, distanceFromRoot + 1, true, locals, sharedData).GetScore();
+			newScore = -NegaScout(position, initialDepth, extendedDepth - 1, -beta, -a, -colour, distanceFromRoot + 1, true, locals, sharedData, line).GetScore();
 		}
 
 		position.RevertMove();
 
 		UpdateScore(newScore, Score, bestMove, move);
-		UpdateAlpha(Score, a, move, distanceFromRoot, locals);
+		UpdateAlpha(Score, a, move, line, PV);
 
 		if (a >= beta) //Fail high cutoff
 		{
@@ -452,12 +453,12 @@ Move GetTBMove(unsigned int result)
 	return Move(static_cast<Square>(TB_GET_FROM(result)), static_cast<Square>(TB_GET_TO(result)), static_cast<MoveFlag>(flag));
 }
 
-void UpdateAlpha(int Score, int& a, const Move& move, unsigned int distanceFromRoot, SearchData& locals)
+void UpdateAlpha(int Score, int& a, const Move& move, const BasicMoveList& line, BasicMoveList& PV)
 {
 	if (Score > a)
 	{
 		a = Score;
-		UpdatePV(move, distanceFromRoot, locals.PvTable);
+		UpdatePV(move, line, PV);
 	}
 }
 
@@ -475,13 +476,11 @@ int Reduction(int depth, int i)
 	return LMR_reduction[std::min(63, std::max(0, depth))][std::min(63, std::max(0, i))];
 }
 
-void UpdatePV(Move move, int distanceFromRoot, std::vector<std::vector<Move>>& PvTable)
+void UpdatePV(Move move, const BasicMoveList& line, BasicMoveList& PV)
 {
-	PvTable[distanceFromRoot].clear();
-	PvTable[distanceFromRoot].push_back(move);
-
-	if (distanceFromRoot + 1 < static_cast<int>(PvTable.size()))
-		PvTable[distanceFromRoot].insert(PvTable[distanceFromRoot].end(), PvTable[distanceFromRoot + 1].begin(), PvTable[distanceFromRoot + 1].end());
+	PV.clear();
+	PV.Append(move);
+	PV.insert(PV.end(), line.begin(), line.end());
 }
 
 bool UseTransposition(const TTEntry& entry, int alpha, int beta)
@@ -504,7 +503,7 @@ bool CheckForRep(const Position& position, int distanceFromRoot)
 	return position.CheckForRep(distanceFromRoot, 3);
 }
 
-int extension(const Position& position, int alpha, int beta)
+int extension(const Position& position)
 {
 	int extension = 0;
 
@@ -605,12 +604,12 @@ constexpr int TBWinIn(int distanceFromRoot)
 	return TB_WIN_SCORE - distanceFromRoot;
 }
 
-SearchResult Quiescence(Position& position, unsigned int initialDepth, int alpha, int beta, int colour, unsigned int distanceFromRoot, int depthRemaining, SearchData& locals, ThreadSharedData& sharedData)
+SearchResult Quiescence(Position& position, unsigned int initialDepth, int alpha, int beta, int colour, unsigned int distanceFromRoot, int depthRemaining, SearchData& locals, ThreadSharedData& sharedData, BasicMoveList& PV)
 {
+	PV.clear();
 	position.ReportDepth(distanceFromRoot);
 
 	if (distanceFromRoot >= MAX_DEPTH) return 0;						//Have we reached max depth?
-	locals.PvTable[distanceFromRoot].clear();
 
 	//See if we should abort the search
 	if (initialDepth > 1 && locals.limits.CheckTimeLimit()) return -1;	//Am I out of time?
@@ -623,6 +622,7 @@ SearchResult Quiescence(Position& position, unsigned int initialDepth, int alpha
 	
 	Move bestmove = Move::Uninitialized;
 	int Score = staticScore;
+	BasicMoveList line;
 
 	MoveGenerator gen(position, distanceFromRoot, locals, true);
 	Move move;
@@ -643,11 +643,11 @@ SearchResult Quiescence(Position& position, unsigned int initialDepth, int alpha
 			break;
 
 		position.ApplyMove(move);
-		int newScore = -Quiescence(position, initialDepth, -beta, -alpha, -colour, distanceFromRoot + 1, depthRemaining - 1, locals, sharedData).GetScore();
+		int newScore = -Quiescence(position, initialDepth, -beta, -alpha, -colour, distanceFromRoot + 1, depthRemaining - 1, locals, sharedData, line).GetScore();
 		position.RevertMove();
 
 		UpdateScore(newScore, Score, bestmove, move);
-		UpdateAlpha(Score, alpha, move, distanceFromRoot, locals);
+		UpdateAlpha(Score, alpha, move, line, PV);
 
 		if (Score >= beta)
 			break;

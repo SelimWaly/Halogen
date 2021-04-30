@@ -47,12 +47,12 @@ private:
 //--------------------------------------------------------------------------------------------
 
 public:
-	std::vector<std::vector<Move>> PvTable;
 	std::vector<std::array<Move, 2>> KillerMoves;					//2 moves indexed by distanceFromRoot
 	std::array<std::array<std::array<int16_t, N_SQUARES>, N_SQUARES>, N_PLAYERS> History = {}; //[side][from][to]
 	
 	EvalCacheTable evalTable;
 	SearchLimits limits;
+	BasicMoveList PV;
 
 	void AddNode() { nodes++; }
 	void AddTbHit() { tbHits++; }
