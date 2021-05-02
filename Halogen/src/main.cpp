@@ -681,11 +681,11 @@ void SyzygyLabel(std::string syzyzy_path, std::string input, std::string output)
 
 		int score = -1;
 
-		if (TB_GET_WDL(probe) == TB_LOSS)
+		if ((TB_GET_WDL(probe) == TB_LOSS && position.GetTurn() == WHITE) || (TB_GET_WDL(probe) == TB_WIN && position.GetTurn() == BLACK))
 			score = TB_LOSS_SCORE;
 		else if (TB_GET_WDL(probe) == TB_DRAW)
 			score = 0;
-		else if (TB_GET_WDL(probe) == TB_WIN)
+		if ((TB_GET_WDL(probe) == TB_LOSS && position.GetTurn() == BLACK) || (TB_GET_WDL(probe) == TB_WIN && position.GetTurn() == WHITE))
 			score = TB_WIN_SCORE;
 		else
 			assert(0);
