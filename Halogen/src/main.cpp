@@ -11,6 +11,7 @@ void Bench(int depth = 16);
 
 void RetrogradeSplit(std::string input);
 void SyzygyLabel(std::string syzyzy_path, std::string input, std::string output);
+void RetrogradePlayout(std::string input, int pieceCount, std::string output);
 
 string version = "10.11.3";
 
@@ -369,6 +370,11 @@ int main(int argc, char* argv[])
 			SyzygyLabel(argv[2], argv[3], argv[4]);
 		}
 
+		else if (token == "retrograde-playout")
+		{
+			RetrogradePlayout(argv[2], stoi(argv[3]), argv[4]);
+		}
+
 		//Non uci commands
 		else if (token == "print") position.Print();
 		else cout << "Unknown command" << endl;
@@ -691,5 +697,63 @@ void SyzygyLabel(std::string syzyzy_path, std::string input, std::string output)
 			assert(0);
 		
 		dest << fen << " " << result << " " << score << "\n";
+	}
+}
+
+#include <chrono>
+
+void RetrogradePlayout(std::string input, int pieceCount, std::string output)
+{
+	std::ifstream source(input);
+
+	if (!source.is_open())
+	{
+		std::cout << "Error, could not open input file\n";
+		std::cout << "File name was: " << input << "\n";
+		return;
+	}
+
+	std::ofstream dest(output, fstream::app);
+
+	if (!dest.is_open())
+	{
+		std::cout << "Error, could not open output file\n";
+		std::cout << "File name was: " << output << "\n";
+		return;
+	}
+
+	Position position;
+	
+	int completed = 0;
+
+	std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
+	std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
+
+	std::string line;
+	while (std::getline(source, line))
+	{
+		std::size_t last_word = line.find_last_of(' ');
+
+		std::string fen = line.substr(0, last_word);
+		std::string result = line.substr(last_word + 1);
+
+		if (!position.InitialiseFromFen(fen))
+		{
+			std::cout << "Ignored bad fen " << fen << "\n";
+			continue;
+		}
+
+		KeepSearching = true;
+		int score = PlayoutGame(position, pieceCount);
+
+		dest << fen << " " << result << " " << score << "\n";
+		completed++;
+
+		if (completed % 1000 == 0)
+		{
+			end = std::chrono::steady_clock::now();
+			std::cout << 1000 / double(std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count()) * 1000000 << std::endl;
+			begin = std::chrono::steady_clock::now();
+		}
 	}
 }
