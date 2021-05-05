@@ -744,9 +744,12 @@ void RetrogradePlayout(std::string input, int pieceCount, std::string output)
 		}
 
 		KeepSearching = true;
-		int score = PlayoutGame(position, pieceCount);
+		std::optional<int> score = PlayoutGame(position, pieceCount);
 
-		dest << fen << " " << result << " " << score << "\n";
+		if (!score)
+			continue;
+
+		dest << fen << " " << result << " " << *score << "\n";
 		completed++;
 
 		if (completed % 1000 == 0)
