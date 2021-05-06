@@ -41,11 +41,6 @@ struct SearchData
 {
 	explicit SearchData(const SearchLimits& Limits);
 
-//--------------------------------------------------------------------------------------------
-private:
-	uint64_t padding1[8] = {};	//To avoid false sharing between adjacent SearchData objects
-//--------------------------------------------------------------------------------------------
-
 public:
 	std::vector<std::vector<Move>> PvTable;
 	std::vector<std::array<Move, 2>> KillerMoves;					//2 moves indexed by distanceFromRoot
@@ -65,11 +60,6 @@ private:
 	friend class ThreadSharedData;
 	uint64_t tbHits = 0;
 	uint64_t nodes = 0;
-
-//--------------------------------------------------------------------------------------------
-private:
-	uint64_t padding2[8] = {};	//To avoid false sharing between adjacent SearchData objects
-//--------------------------------------------------------------------------------------------
 };
 
 struct SearchParameters
