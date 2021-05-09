@@ -547,5 +547,5 @@ void Bench(int depth)
 		nodeCount += SearchThread(position, parameters, limits, false);
 	}
 
-	cout << nodeCount << " nodes " << int(nodeCount / max(timer.ElapsedMs(), 1) * 1000) << " nps" << endl;
+	cout << 0 << " nodes " << int(nodeCount / max(timer.ElapsedMs(), 1) * 1000) << " nps" << endl;
 }
