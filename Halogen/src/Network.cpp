@@ -1,5 +1,5 @@
 #include "Network.h"
-#include "epoch321.net"
+#include "epoch2.net"
 
 std::array<std::array<int16_t, HIDDEN_NEURONS>, INPUT_NEURONS> Network::hiddenWeights = {};
 std::array<int16_t, HIDDEN_NEURONS> Network::hiddenBias = {};
@@ -86,7 +86,7 @@ int16_t Network::QuickEval() const
     return output / SQUARE_PRECISION;
 }
 
-/*void QuantizationAnalysis()
+void QuantizationAnalysis()
 {
     auto Data = reinterpret_cast<float*>(label);
 
@@ -119,4 +119,4 @@ int16_t Network::QuickEval() const
 
     std::cout << weight << std::endl;
     weight = 0;
-}*/
+}
