@@ -11,7 +11,7 @@ int EvaluatePositionNet(const Position& position, EvalCacheTable& evalTable)
         eval = position.GetEvaluation();
 
         NoPawnAdjustment(eval, position);
-        TempoAdjustment(eval, position);
+        //TempoAdjustment(eval, position);
 
         evalTable.AddEntry(position.GetZobristKey(), eval);
     }
