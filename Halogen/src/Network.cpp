@@ -1,14 +1,11 @@
 #include "Network.h"
 #include "epoch321.net"
 
-std::array<std::array<int16_t, HIDDEN_NEURONS>, INPUT_NEURONS> Network::hiddenWeights = {};
-std::array<int16_t, HIDDEN_NEURONS> Network::hiddenBias = {};
-std::array<int16_t, HIDDEN_NEURONS> Network::outputWeights = {};
-int16_t Network::outputBias = {};
+std::array<std::array<float, HIDDEN_NEURONS>, INPUT_NEURONS> Network::hiddenWeights = {};
+std::array<float, HIDDEN_NEURONS> Network::hiddenBias = {};
+std::array<float, HIDDEN_NEURONS> Network::outputWeights = {};
+float Network::outputBias = {};
 
-constexpr int16_t MAX_VALUE = 128;
-constexpr int16_t PRECISION = ((size_t)std::numeric_limits<int16_t>::max() + 1) / MAX_VALUE;
-constexpr int32_t SQUARE_PRECISION = (int32_t)PRECISION * PRECISION;
 constexpr double SCALE_FACTOR = 0.94;   //Found empirically to maximize elo
 
 template<typename T, size_t SIZE>
@@ -34,16 +31,16 @@ void Network::Init()
     auto Data = reinterpret_cast<float*>(label);
 
     for (size_t i = 0; i < HIDDEN_NEURONS; i++)
-        hiddenBias[i] = (int16_t)round(*Data++ * PRECISION);
+        hiddenBias[i] = *Data++;
 
     for (size_t i = 0; i < INPUT_NEURONS; i++)
         for (size_t j = 0; j < HIDDEN_NEURONS; j++)
-            hiddenWeights[i][j] = (int16_t)round(*Data++ * PRECISION);
+            hiddenWeights[i][j] = *Data++;
 
-    outputBias = (int16_t)round(*Data++ * SCALE_FACTOR * PRECISION);
+    outputBias = *Data++ * SCALE_FACTOR;
 
     for (size_t i = 0; i < HIDDEN_NEURONS; i++)
-        outputWeights[i] = (int16_t)round(*Data++ * SCALE_FACTOR * PRECISION);
+        outputWeights[i] = *Data++ * SCALE_FACTOR;
 
     //Swap the first half with last half to swap white and black inputs
     //Because Andrew's trainer goes WHITE, BLACK but Halogen goes BLACK, WHITE
@@ -81,9 +78,9 @@ void Network::ApplyInverseDelta()
 
 int16_t Network::QuickEval() const
 {
-    int32_t output = outputBias * PRECISION;
+    float output = outputBias;
     DotProduct(ReLU(Zeta.back()), outputWeights, output);
-    return output / SQUARE_PRECISION;
+    return static_cast<int16_t>(std::roundf(output));
 }
 
 /*void QuantizationAnalysis()
