@@ -1,5 +1,5 @@
 #include "Network.h"
-#include "epoch50.net"
+#include "epoch4.net"
 
 std::array<std::array<float, HIDDEN_NEURONS>, INPUT_NEURONS> Network::hiddenWeights = {};
 std::array<float, HIDDEN_NEURONS> Network::hiddenBias = {};
