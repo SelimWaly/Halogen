@@ -8,7 +8,7 @@ std::array<int16_t, HIDDEN_NEURONS> Network::hiddenBias = {};
 std::array<int16_t, HIDDEN_NEURONS> Network::outputWeights = {};
 int16_t Network::outputBias = {};
 
-constexpr int16_t MAX_VALUE = 128;
+constexpr int16_t MAX_VALUE = 256;
 constexpr int16_t PRECISION = ((size_t)std::numeric_limits<int16_t>::max() + 1) / MAX_VALUE;
 constexpr int32_t SQUARE_PRECISION = (int32_t)PRECISION * PRECISION;
 constexpr double SCALE_FACTOR = 0.94;   //Found empirically to maximize elo
