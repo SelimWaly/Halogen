@@ -11,7 +11,7 @@ int16_t Network::outputBias = {};
 constexpr int16_t MAX_VALUE = 128;
 constexpr int16_t PRECISION = ((size_t)std::numeric_limits<int16_t>::max() + 1) / MAX_VALUE;
 constexpr int32_t SQUARE_PRECISION = (int32_t)PRECISION * PRECISION;
-constexpr double SCALE_FACTOR = 0.94;   //Found empirically to maximize elo
+constexpr double SCALE_FACTOR = 0.99;   //Found empirically to maximize elo
 
 template<typename T, size_t SIZE>
 [[nodiscard]] std::array<T, SIZE> ReLU(const std::array<T, SIZE>& source)
