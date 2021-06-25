@@ -14,7 +14,7 @@ inline double LMR_coeff = 1.03;
 
 inline int Null_constant = 4;
 inline int Null_depth_quotent = 6;
-inline int Null_beta_quotent = 250;
+inline int Null_beta_quotent = 190;
 
 inline int Futility_constant = 100;
 inline int Futility_coeff = 25;
