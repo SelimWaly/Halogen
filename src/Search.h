@@ -24,8 +24,8 @@ inline int Aspiration_window = 15;
 
 inline int Delta_margin = 200;
 
-inline int SNMP_coeff = 119;
-inline int SNMP_depth = 8;
+inline int SNMP_coeff = 140;
+inline int SNMP_depth = 9;
 
 inline int LMP_constant = 10;
 inline int LMP_coeff = 7;
