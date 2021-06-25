@@ -12,7 +12,7 @@
 inline double LMR_constant = -1.76;
 inline double LMR_coeff = 1.03;
 
-inline int Null_constant = 4;
+inline int Null_constant = 5;
 inline int Null_depth_quotent = 6;
 inline int Null_beta_quotent = 250;
 
