@@ -14,15 +14,15 @@ inline double LMR_coeff = 1.03;
 
 inline int Null_constant = 4;
 inline int Null_depth_quotent = 6;
-inline int Null_beta_quotent = 250;
+inline int Null_beta_quotent = 190;
 
-inline int Futility_constant = 100;
-inline int Futility_coeff = 25;
+inline int Futility_constant = 63;
+inline int Futility_coeff = 54;
 inline int Futility_depth = 10;
 
 inline int Aspiration_window = 15;
 
-inline int Delta_margin = 200;
+inline int Delta_margin = 235;
 
 inline int SNMP_coeff = 119;
 inline int SNMP_depth = 8;
