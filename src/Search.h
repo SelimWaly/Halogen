@@ -16,8 +16,8 @@ inline int Null_constant = 4;
 inline int Null_depth_quotent = 6;
 inline int Null_beta_quotent = 250;
 
-inline int Futility_constant = 100;
-inline int Futility_coeff = 25;
+inline int Futility_constant = 63;
+inline int Futility_coeff = 54;
 inline int Futility_depth = 10;
 
 inline int Aspiration_window = 15;
