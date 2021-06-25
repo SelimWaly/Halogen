@@ -22,7 +22,7 @@ inline int Futility_depth = 10;
 
 inline int Aspiration_window = 15;
 
-inline int Delta_margin = 200;
+inline int Delta_margin = 235;
 
 inline int SNMP_coeff = 119;
 inline int SNMP_depth = 8;
