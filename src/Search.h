@@ -9,7 +9,7 @@
 
 /*Tuneable search constants*/
 
-inline double LMR_constant = -1.76;
+inline double LMR_constant = -1.63;
 inline double LMR_coeff = 1.03;
 
 inline int Null_constant = 4;
