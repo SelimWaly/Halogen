@@ -13,7 +13,7 @@ bool MoveGenerator::Next(Move& move)
 {
 	if (stage == Stage::TT_MOVE)
 	{
-		TTmove = GetHashMove(position, distanceFromRoot);
+		TTmove = GetHashMove(position, distanceFromRoot, position.GetTurnCount());
 		stage = Stage::GEN_LOUD;
 
 		if (MoveIsLegal(position, TTmove))
@@ -283,26 +283,12 @@ void MoveGenerator::OrderMoves(ExtendedMoveList& moves)
 	selection_sort(moves);
 }
 
-Move GetHashMove(const Position& position, int depthRemaining, int distanceFromRoot)
+Move GetHashMove(const Position& position, int distanceFromRoot, int halfMoveCount)
 {
-	TTEntry hash = tTable.GetEntry(position.GetZobristKey(), distanceFromRoot);
+	TTEntry hash = tTable.GetEntry(position.GetZobristKey(), distanceFromRoot, halfMoveCount);
 
-	if (CheckEntry(hash, position.GetZobristKey(), depthRemaining))
+	if (hash.GetKey() == position.GetZobristKey())
 	{
-		tTable.ResetAge(position.GetZobristKey(), position.GetTurnCount(), distanceFromRoot);
-		return hash.GetMove();
-	}
-
-	return Move::Uninitialized;
-}
-
-Move GetHashMove(const Position& position, int distanceFromRoot)
-{
-	TTEntry hash = tTable.GetEntry(position.GetZobristKey(), distanceFromRoot);
-
-	if (CheckEntry(hash, position.GetZobristKey()))
-	{
-		tTable.ResetAge(position.GetZobristKey(), position.GetTurnCount(), distanceFromRoot);
 		return hash.GetMove();
 	}
 

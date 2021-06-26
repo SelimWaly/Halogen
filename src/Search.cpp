@@ -259,17 +259,13 @@ SearchResult NegaScout(Position& position, unsigned int initialDepth, int depthR
 	}
 
 	//Query the transpotition table
-	if (!IsPV(beta, alpha)) 
+	if (!IsPV(beta, alpha))
 	{
-		TTEntry entry = tTable.GetEntry(position.GetZobristKey(), distanceFromRoot);
-		if (CheckEntry(entry, position.GetZobristKey(), depthRemaining))
-		{
-			tTable.ResetAge(position.GetZobristKey(), position.GetTurnCount(), distanceFromRoot);
+		TTEntry entry = tTable.GetEntry(position.GetZobristKey(), distanceFromRoot, position.GetTurnCount(), depthRemaining);
 
-			if (!position.CheckForRep(distanceFromRoot, 2))	//Don't take scores from the TT if there's a two-fold repitition
-				if (UseTransposition(entry, alpha, beta)) 
-					return SearchResult(entry.GetScore(), entry.GetMove());
-		}
+		//Don't take scores from the TT if there's a two-fold repitition
+		if (entry.GetKey() == position.GetZobristKey() && !position.CheckForRep(distanceFromRoot, 2) && UseTransposition(entry, alpha, beta))
+			return SearchResult(entry.GetScore(), entry.GetMove());
 	}
 
 	bool InCheck = IsInCheck(position);
@@ -324,7 +320,7 @@ SearchResult NegaScout(Position& position, unsigned int initialDepth, int depthR
 	bool noLegalMoves = true;
 
 	//Rebel style IID. Don't ask why this helps but it does.
-	if (GetHashMove(position, distanceFromRoot) == Move::Uninitialized && depthRemaining > 3)
+	if (GetHashMove(position, distanceFromRoot, position.GetTurnCount()) == Move::Uninitialized && depthRemaining > 3)
 		depthRemaining--;
 
 	bool FutileNode = depthRemaining < Futility_depth && staticScore + Futility_constant + Futility_coeff * depthRemaining < a;

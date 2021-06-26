@@ -16,8 +16,9 @@ public:
 	void ResetTable();
 	void SetSize(uint64_t MB);	//will wipe the table and reconstruct a new empty table with a set size. units in MB!
 	void AddEntry(const Move& best, uint64_t ZobristKey, int Score, int Depth, int Turncount, int distanceFromRoot, EntryType Cutoff);
-	TTEntry GetEntry(uint64_t key, int distanceFromRoot) const;
-	void ResetAge(uint64_t key, int halfmove, int distanceFromRoot);
+
+	TTEntry GetEntry(uint64_t key, int distanceFromRoot, int halfMoveCount, int minDepth = -MAX_DEPTH);
+
 	void PreFetch(uint64_t key) const;
 
 private:
