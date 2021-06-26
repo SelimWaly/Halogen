@@ -18,8 +18,8 @@ public:
 	void SetSize(uint64_t MB);	//will wipe the table and reconstruct a new empty table with a set size. units in MB!
 	void AddEntry(const Move& best, uint64_t ZobristKey, int Score, int Depth, int Turncount, int distanceFromRoot, EntryType Cutoff);
 
-	std::optional<TTEntry> GetEntry(uint64_t key, int distanceFromRoot, int halfMoveCount) const;
-	std::optional<TTEntry> GetEntry(uint64_t key, int distanceFromRoot, int halfMoveCount, int minDepth) const;
+	std::optional<TTEntry> GetEntry(uint64_t key, int distanceFromRoot, int halfMoveCount);
+	std::optional<TTEntry> GetEntry(uint64_t key, int distanceFromRoot, int halfMoveCount, int minDepth);
 
 	void PreFetch(uint64_t key) const;
 
