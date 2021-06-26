@@ -46,7 +46,7 @@ void TranspositionTable::AddEntry(const Move& best, uint64_t ZobristKey, int Sco
 	table[hash].entry[std::distance(scores.begin(), std::min_element(scores.begin(), scores.end()))] = TTEntry(best, ZobristKey, Score, Depth, Turncount, distanceFromRoot, Cutoff);
 }
 
-TTEntry TranspositionTable::GetEntry(uint64_t key, int distanceFromRoot) const
+std::optional<TTEntry> TranspositionTable::GetEntry(uint64_t key, int distanceFromRoot, int halfMoveCount) const
 {
 	size_t index = HashFunction(key);
 
@@ -55,24 +55,29 @@ TTEntry TranspositionTable::GetEntry(uint64_t key, int distanceFromRoot) const
 		if (entry.GetKey() == key)
 		{
 			entry.MateScoreAdjustment(distanceFromRoot);
+			entry.SetHalfMove(halfMoveCount, distanceFromRoot);
 			return entry;
 		}
 	}
 
-	return {};
+	return std::nullopt;
 }
 
-void TranspositionTable::ResetAge(uint64_t key, int halfmove, int distanceFromRoot)
+std::optional<TTEntry> TranspositionTable::GetEntry(uint64_t key, int distanceFromRoot, int halfMoveCount, int minDepth) const
 {
 	size_t index = HashFunction(key);
 
-	for (auto& entry : table[index].entry)
+	for (auto entry : table[index].entry)
 	{
-		if (entry.GetKey() == key)
+		if (entry.GetKey() == key && entry.GetDepth() >= minDepth)
 		{
-			entry.SetHalfMove(halfmove, distanceFromRoot);
+			entry.MateScoreAdjustment(distanceFromRoot);
+			entry.SetHalfMove(halfMoveCount, distanceFromRoot);
+			return entry;
 		}
 	}
+
+	return std::nullopt;
 }
 
 int TranspositionTable::GetCapacity(int halfmove) const

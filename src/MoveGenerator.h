@@ -46,5 +46,4 @@ private:
 	bool skipQuiets = false;
 };
 
-Move GetHashMove(const Position& position, int depthRemaining, int distanceFromRoot);
-Move GetHashMove(const Position& position, int distanceFromRoot);
+Move GetHashMove(const Position& position, int distanceFromRoot, int halfMoveCount);
