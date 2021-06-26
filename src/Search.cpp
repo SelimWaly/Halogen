@@ -626,6 +626,24 @@ constexpr int TBWinIn(int distanceFromRoot)
 	return TB_WIN_SCORE - distanceFromRoot;
 }
 
+int GetBestPossibleCaptureValue(const Position& position)
+{
+	Players stm = position.GetTurn();
+
+	if (position.GetPieceBB(QUEEN, !stm)) return PieceValues[QUEEN];
+	if (position.GetPieceBB(ROOK, !stm)) return PieceValues[ROOK];
+	if (position.GetPieceBB(BISHOP, !stm)) return PieceValues[BISHOP];
+	if (position.GetPieceBB(KNIGHT, !stm)) return PieceValues[KNIGHT];
+	if (position.GetPieceBB(PAWN, !stm)) return PieceValues[PAWN];
+
+	return 0;
+}
+
+bool PotentialPromotion(const Position& position)
+{
+	return position.GetPieceBB(PAWN, position.GetTurn()) & (position.GetTurn() ? RankBB[RANK_7] : RankBB[RANK_2]);
+}
+
 SearchResult Quiescence(Position& position, unsigned int initialDepth, int alpha, int beta, int colour, unsigned int distanceFromRoot, int depthRemaining, SearchData& locals, ThreadSharedData& sharedData)
 {
 	locals.ReportDepth(distanceFromRoot);
@@ -642,6 +660,10 @@ SearchResult Quiescence(Position& position, unsigned int initialDepth, int alpha
 	if (staticScore >= beta) return staticScore;
 	if (staticScore > alpha) alpha = staticScore;
 	
+	int bestCapture = GetBestPossibleCaptureValue(position);
+	if (PotentialPromotion(position)) bestCapture += PieceValues[QUEEN] - PieceValues[PAWN];
+	if (staticScore + bestCapture < alpha) return alpha;
+
 	Move bestmove = Move::Uninitialized;
 	int Score = staticScore;
 

@@ -2,6 +2,9 @@
 #include "SearchData.h"
 #include "MoveGeneration.h"
 
+constexpr int PieceValues[] = { 91, 532, 568, 715, 1279, 5000,
+								91, 532, 568, 715, 1279, 5000 };
+
 enum class Stage
 {
 	TT_MOVE,
