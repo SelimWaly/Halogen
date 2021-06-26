@@ -48,3 +48,5 @@ private:
 
 Move GetHashMove(const Position& position, int depthRemaining, int distanceFromRoot);
 Move GetHashMove(const Position& position, int distanceFromRoot);
+
+int see(Position& position, Move move);
