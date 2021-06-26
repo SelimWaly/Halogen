@@ -659,7 +659,7 @@ SearchResult Quiescence(Position& position, unsigned int initialDepth, int alpha
 		locals.AddNode();
 		noLegalMoves = false;
 
-		int SEE = see(position, move);
+		int SEE = (!move.IsPromotion() && move.IsCapture() && move.GetFlag() != EN_PASSANT) ? see(position, move) : 0;
 
 		if (Score > TBLossIn(MAX_DEPTH))
 		{
