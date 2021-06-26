@@ -320,7 +320,6 @@ SearchResult NegaScout(Position& position, unsigned int initialDepth, int depthR
 	Move bestMove = Move::Uninitialized;	
 	int a = alpha;
 	int b = beta;
-	int searchedMoves;
 	bool noLegalMoves = true;
 
 	//Rebel style IID. Don't ask why this helps but it does.
@@ -332,7 +331,7 @@ SearchResult NegaScout(Position& position, unsigned int initialDepth, int depthR
 	MoveGenerator gen(position, distanceFromRoot, locals, false);
 	Move move;
 
-	for (searchedMoves = 0; gen.Next(move); searchedMoves++)
+	for (int searchedMoves = 0; gen.Next(move); searchedMoves++)
 	{
 		if (distanceFromRoot == 0 && sharedData.MultiPVExcludeMove(move))
 			continue;
@@ -637,31 +636,42 @@ SearchResult Quiescence(Position& position, unsigned int initialDepth, int alpha
 	if (initialDepth > 1 && locals.limits.CheckTimeLimit()) throw TimeAbort();	//Am I out of time?
 	if (sharedData.ThreadAbort(initialDepth)) throw ThreadDepthAbort();			//Has this depth been finished by another thread?
 	if (DeadPosition(position)) return 0;										//Is this position a dead draw?
-
+	
+	int Score = LowINF;
 	int staticScore = colour * EvaluatePositionNet(position, locals.evalTable);
-	if (staticScore >= beta) return staticScore;
-	if (staticScore > alpha) alpha = staticScore;
+
+	if (!IsInCheck(position))
+	{
+		if (staticScore >= beta) return staticScore;
+		if (staticScore > alpha) alpha = staticScore;
+
+		Score = staticScore;
+	}
 	
 	Move bestmove = Move::Uninitialized;
-	int Score = staticScore;
 
-	MoveGenerator gen(position, distanceFromRoot, locals, true);
+	MoveGenerator gen(position, distanceFromRoot, locals, !IsInCheck(position));
 	Move move;
+	bool noLegalMoves = true;
 
-	while (gen.Next(move))
+	for (int searchedMoves = 0; gen.Next(move); searchedMoves++)
 	{
 		locals.AddNode();
+		noLegalMoves = false;
 
 		int SEE = gen.GetSEE();
 
-		if (staticScore + SEE + Delta_margin < alpha) 						//delta pruning
-			break;
+		if (Score > TBLossIn(MAX_DEPTH))
+		{
+			if (staticScore + SEE + Delta_margin < alpha) 						//delta pruning
+				break;
 
-		if (SEE < 0)														//prune bad captures
-			break;
+			if (SEE < 0)														//prune bad captures
+				break;
 
-		if (move.IsPromotion() && !(move.GetFlag() == QUEEN_PROMOTION || move.GetFlag() == QUEEN_PROMOTION_CAPTURE))	//prune underpromotions
-			break;
+			if (move.IsPromotion() && !(move.GetFlag() == QUEEN_PROMOTION || move.GetFlag() == QUEEN_PROMOTION_CAPTURE))	//prune underpromotions
+				break;
+		}
 
 		position.ApplyMove(move);
 		int newScore = -Quiescence(position, initialDepth, -beta, -alpha, -colour, distanceFromRoot + 1, depthRemaining - 1, locals, sharedData).GetScore();
@@ -672,6 +682,12 @@ SearchResult Quiescence(Position& position, unsigned int initialDepth, int alpha
 
 		if (Score >= beta)
 			break;
+	}
+
+	//Checkmate or stalemate 
+	if (noLegalMoves)
+	{
+		return TerminalScore(position, distanceFromRoot);
 	}
 
 	return SearchResult(Score, bestmove);
