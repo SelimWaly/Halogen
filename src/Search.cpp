@@ -5,7 +5,7 @@ int LMR_reduction[64][64];				//[depth][move number]
 void PrintBestMove(Move Best);
 bool UseTransposition(const TTEntry& entry, int alpha, int beta);
 bool CheckForRep(const Position& position, int distanceFromRoot);
-bool AllowedNull(bool allowedNull, const Position& position, int beta, int alpha, bool InCheck);
+bool AllowedNMP(bool allowedNull, const Position& position, int beta, int alpha, bool InCheck, int staticScore);
 bool IsEndGame(const Position& position);
 bool IsPV(int beta, int alpha);
 void AddScoreToTable(int Score, int alphaOriginal, const Position& position, int depthRemaining, int distanceFromRoot, int beta, Move bestMove);
@@ -28,6 +28,7 @@ Move GetTBMove(unsigned int result);
 void SearchPosition(Position position, ThreadSharedData& sharedData, unsigned int threadID);
 SearchResult AspirationWindowSearch(Position position, int depth, int prevScore, SearchData& locals, ThreadSharedData& sharedData, unsigned int threadID);
 SearchResult NegaScout(Position& position, unsigned int initialDepth, int depthRemaining, int alpha, int beta, int colour, unsigned int distanceFromRoot, bool allowedNull, SearchData& locals, ThreadSharedData& sharedData);
+bool AllowedSNMP(int depthRemaining, int staticScore, int beta, bool InCheck, int alpha);
 void UpdateAlpha(int Score, int& a, const Move& move, unsigned int distanceFromRoot, SearchData& locals);
 void UpdateScore(int newScore, int& Score, Move& bestMove, const Move& move);
 SearchResult Quiescence(Position& position, unsigned int initialDepth, int alpha, int beta, int colour, unsigned int distanceFromRoot, int depthRemaining, SearchData& locals, ThreadSharedData& sharedData);
@@ -282,10 +283,11 @@ SearchResult NegaScout(Position& position, unsigned int initialDepth, int depthR
 	int staticScore = colour * EvaluatePositionNet(position, locals.evalTable);
 
 	//Static null move pruning
-	if (depthRemaining < SNMP_depth && staticScore - SNMP_coeff * depthRemaining >= beta && !InCheck && !IsPV(beta, alpha)) return beta;
+	if (AllowedSNMP(depthRemaining, staticScore, beta, InCheck, alpha))
+		return beta;
 
 	//Null move pruning
-	if (AllowedNull(allowedNull, position, beta, alpha, InCheck) && (staticScore > beta))
+	if (AllowedNMP(allowedNull, position, beta, alpha, InCheck, staticScore))
 	{
 		unsigned int reduction = Null_constant + depthRemaining / Null_depth_quotent + std::min(3, (staticScore - beta) / Null_beta_quotent);
 
@@ -295,7 +297,7 @@ SearchResult NegaScout(Position& position, unsigned int initialDepth, int depthR
 
 		if (score >= beta)
 		{
-			if (beta < matedIn(MAX_DEPTH) || depthRemaining >= 10)	//TODO: I'm not sure about this first condition
+			if (depthRemaining >= 10)
 			{
 				//Do verification search for high depths
 				SearchResult result = NegaScout(position, initialDepth, depthRemaining - reduction - 1, beta - 1, beta, colour, distanceFromRoot, false, locals, sharedData);
@@ -410,6 +412,15 @@ SearchResult NegaScout(Position& position, unsigned int initialDepth, int depthR
 	AddScoreToTable(Score, alpha, position, depthRemaining, distanceFromRoot, beta, bestMove);
 
 	return SearchResult(Score, bestMove);
+}
+
+bool AllowedSNMP(int depthRemaining, int staticScore, int beta, bool InCheck, int alpha)
+{
+	return depthRemaining < SNMP_depth
+		&& staticScore - SNMP_coeff * depthRemaining >= beta
+		&& !InCheck 
+		&& !IsPV(beta, alpha)
+		&& beta > TBLossIn(MAX_DEPTH);
 }
 
 unsigned int ProbeTBRoot(const Position& position)
@@ -550,13 +561,15 @@ bool FutilityMoveGivesCheck(Position& position, Move move)
 	return ret;
 }
 
-bool AllowedNull(bool allowedNull, const Position& position, int beta, int alpha, bool InCheck)
+bool AllowedNMP(bool allowedNull, const Position& position, int beta, int alpha, bool InCheck, int staticScore)
 {
 	return allowedNull
 		&& !InCheck
 		&& !IsPV(beta, alpha)
 		&& !IsEndGame(position)
-		&& GetBitCount(position.GetAllPieces()) >= 5;	//avoid null move pruning in very late game positions due to zanauag issues. Even with verification search e.g 8/6k1/8/8/8/8/1K6/Q7 w - - 0 1
+		&& GetBitCount(position.GetAllPieces()) >= 5	//avoid null move pruning in very late game positions due to zanauag issues. Even with verification search e.g 8/6k1/8/8/8/8/1K6/Q7 w - - 0 1
+		&& staticScore > beta
+		&& beta > TBLossIn(MAX_DEPTH);
 }
 
 bool IsEndGame(const Position& position)
