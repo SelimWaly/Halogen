@@ -198,6 +198,12 @@ SearchResult NegaScout(Position& position, unsigned int initialDepth, int depthR
 		|| position.GetFiftyMoveCount() > 100)							//cannot use >= as it could currently be checkmate which would count as a win
 		return 8 - (locals.GetThreadNodes() & 0b1111);					//as in https://github.com/Luecx/Koivisto/commit/c8f01211c290a582b69e4299400b667a7731a9f7 with permission from Koivisto authors.
 
+		//mate distance pruning
+	alpha = std::max<int>(matedIn(distanceFromRoot), alpha);
+	beta = std::min<int>(mateIn(distanceFromRoot + 1), beta);
+	if (alpha >= beta)
+		return alpha;
+
 	int Score = LowINF;
 	int MaxScore = HighINF;
 
@@ -308,12 +314,6 @@ SearchResult NegaScout(Position& position, unsigned int initialDepth, int depthR
 			}
 		}
 	}
-
-	//mate distance pruning
-	alpha = std::max<int>(matedIn(distanceFromRoot), alpha);
-	beta = std::min<int>(mateIn(distanceFromRoot), beta);
-	if (alpha >= beta)
-		return alpha;
 
 	//Set up search variables
 	Move bestMove = Move::Uninitialized;
