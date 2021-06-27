@@ -311,7 +311,7 @@ SearchResult NegaScout(Position& position, unsigned int initialDepth, int depthR
 
 	//mate distance pruning
 	alpha = std::max<int>(matedIn(distanceFromRoot), alpha);
-	beta = std::min<int>(mateIn(distanceFromRoot), beta);
+	beta = std::min<int>(mateIn(distanceFromRoot + 1), beta);
 	if (alpha >= beta)
 		return alpha;
 
