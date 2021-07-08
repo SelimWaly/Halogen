@@ -147,5 +147,5 @@ int16_t Network::Eval(const Position& position) const
 
     //------------------
 
-    return static_cast<int16_t>(std::round(output[0]) * (position.GetTurn() == WHITE ? 1 : -1));
+    return static_cast<int16_t>(std::round(output[0] * 0.2) * (position.GetTurn() == WHITE ? 1 : -1));
 }
