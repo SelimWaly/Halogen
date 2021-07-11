@@ -159,7 +159,7 @@ int16_t WDL::ToCP()
     */
 
     constexpr static float epsilon = 1e-8;
-    constexpr static float scale = 150;
+    constexpr static float scale = 300;
 
     float expectation = std::clamp(win + 0.5f * draw, epsilon, 1 - epsilon);
     float eval = std::log(expectation / (1 - expectation));
