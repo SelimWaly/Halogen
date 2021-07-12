@@ -5,7 +5,6 @@ int LMR_reduction[64][64];				//[depth][move number]
 void PrintBestMove(Move Best);
 bool UseTransposition(const TTEntry& entry, int alpha, int beta);
 bool CheckForRep(const Position& position, int distanceFromRoot);
-bool IsFutile(Move move, int beta, int alpha, Position & position, bool IsInCheck);
 bool AllowedNull(bool allowedNull, const Position& position, int beta, int alpha, bool InCheck);
 bool IsEndGame(const Position& position);
 bool IsPV(int beta, int alpha);
@@ -38,7 +37,7 @@ void InitSearch();
 uint64_t SearchThread(Position position, SearchParameters parameters, const SearchLimits& limits, bool noOutput)
 {
 	//Probe TB at root
-	if (GetBitCount(position.GetAllPieces()) <= TB_LARGEST 
+	if (GetBitCount(position.GetAllPieces()) <= TB_LARGEST
 		&& position.GetCanCastleWhiteKingside() == false
 		&& position.GetCanCastleBlackKingside() == false
 		&& position.GetCanCastleWhiteQueenside() == false
@@ -127,7 +126,7 @@ void SearchPosition(Position position, ThreadSharedData& sharedData, unsigned in
 		if (!sharedData.GetData(threadID).limits.CheckContinueSearch())
 			sharedData.ReportWantsToStop(threadID);
 
-		try 
+		try
 		{
 			SearchResult curSearch = AspirationWindowSearch(position, depth, prevScore, sharedData.GetData(threadID), sharedData, threadID);
 			sharedData.ReportResult(depth, sharedData.GetData(threadID).limits.ElapsedTime(), curSearch.GetScore(), alpha, beta, position, curSearch.GetMove(), sharedData.GetData(threadID));
@@ -142,7 +141,7 @@ void SearchPosition(Position position, ThreadSharedData& sharedData, unsigned in
 		catch (TimeAbort&)
 		{
 			//no time to wait around, return immediately.
-			return;	
+			return;
 		}
 	}
 }
@@ -178,7 +177,7 @@ SearchResult AspirationWindowSearch(Position position, int depth, int prevScore,
 		}
 
 		delta = delta + delta / 2;
-	} 
+	}
 
 	return search;
 }
@@ -186,6 +185,7 @@ SearchResult AspirationWindowSearch(Position position, int depth, int prevScore,
 SearchResult NegaScout(Position& position, unsigned int initialDepth, int depthRemaining, int alpha, int beta, int colour, unsigned int distanceFromRoot, bool allowedNull, SearchData& locals, ThreadSharedData& sharedData)
 {
 	locals.ReportDepth(distanceFromRoot);
+	locals.AddNode();
 
 	if (distanceFromRoot >= MAX_DEPTH) return 0;						//Have we reached max depth?
 	locals.PvTable[distanceFromRoot].clear();
@@ -197,8 +197,8 @@ SearchResult NegaScout(Position& position, unsigned int initialDepth, int depthR
 	if (DeadPosition(position)) return 0;								//Is this position a dead draw?
 	if (CheckForRep(position, distanceFromRoot)							//Have we had a draw by repitition?
 		|| position.GetFiftyMoveCount() > 100)							//cannot use >= as it could currently be checkmate which would count as a win
-		return 8 - (locals.GetThreadNodes() & 0b1111);					//as in https://github.com/Luecx/Koivisto/commit/c8f01211c290a582b69e4299400b667a7731a9f7 with permission from Koivisto authors. 
-	
+		return 8 - (locals.GetThreadNodes() & 0b1111);					//as in https://github.com/Luecx/Koivisto/commit/c8f01211c290a582b69e4299400b667a7731a9f7 with permission from Koivisto authors.
+
 	int Score = LowINF;
 	int MaxScore = HighINF;
 
@@ -217,11 +217,11 @@ SearchResult NegaScout(Position& position, unsigned int initialDepth, int depthR
 	}
 
 	//Probe TB in search
-	if (position.GetFiftyMoveCount() == 0 
+	if (position.GetFiftyMoveCount() == 0
 		&& position.GetCanCastleWhiteKingside() == false
 		&& position.GetCanCastleBlackKingside() == false
 		&& position.GetCanCastleWhiteQueenside() == false
-		&& position.GetCanCastleBlackQueenside() == false 
+		&& position.GetCanCastleBlackQueenside() == false
 		&& GetBitCount(position.GetAllPieces()) <= TB_LARGEST )
 	{
 		unsigned int result = ProbeTBSearch(position);
@@ -271,16 +271,16 @@ SearchResult NegaScout(Position& position, unsigned int initialDepth, int depthR
 			}
 		}
 	}
-
+  
 	bool InCheck = IsInCheck(position);
 
 	//Drop into quiescence search
 	if (depthRemaining <= 0 && !InCheck)
-	{ 
+	{
 		return Quiescence(position, initialDepth, alpha, beta, colour, distanceFromRoot, depthRemaining, locals, sharedData);
 	}
 
-	int staticScore = colour * EvaluatePositionNet(position, locals.evalTable); 
+	int staticScore = colour * EvaluatePositionNet(position, locals.evalTable);
 
 	//Static null move pruning
 	if (depthRemaining < SNMP_depth && staticScore - SNMP_coeff * depthRemaining >= beta && !InCheck && !IsPV(beta, alpha)) return beta;
@@ -317,7 +317,7 @@ SearchResult NegaScout(Position& position, unsigned int initialDepth, int depthR
 		return alpha;
 
 	//Set up search variables
-	Move bestMove = Move::Uninitialized;	
+	Move bestMove = Move::Uninitialized;
 	int a = alpha;
 	int b = beta;
 	int searchedMoves;
@@ -338,15 +338,22 @@ SearchResult NegaScout(Position& position, unsigned int initialDepth, int depthR
 			continue;
 
 		noLegalMoves = false;
-		locals.AddNode();
 
 		// late move pruning
 		if (depthRemaining < LMP_depth && searchedMoves >= LMP_constant + LMP_coeff * depthRemaining && Score > TBLossIn(MAX_DEPTH))
 			gen.SkipQuiets();
 
 		//futility pruning
-		if (IsFutile(move, beta, alpha, position, InCheck) && searchedMoves > 0 && FutileNode && Score > TBLossIn(MAX_DEPTH))	//Possibly stop futility pruning if alpha or beta are close to mate scores
-			continue;
+		if (   searchedMoves > 0
+			&& FutileNode
+			&& !IsPV(beta, alpha)
+			&& !InCheck
+			&& Score > TBLossIn(MAX_DEPTH))
+		{
+			gen.SkipQuiets();
+			if (gen.GetStage() >= Stage::GIVE_BAD_LOUD)
+				break;
+		}
 
 		position.ApplyMove(move);
 		tTable.PreFetch(position.GetZobristKey());							//load the transposition into l1 cache. ~5% speedup
@@ -373,7 +380,7 @@ SearchResult NegaScout(Position& position, unsigned int initialDepth, int depthR
 
 		int newScore = -NegaScout(position, initialDepth, extendedDepth - 1, -b, -a, -colour, distanceFromRoot + 1, true, locals, sharedData).GetScore();
 		if (newScore > a && newScore < beta && searchedMoves >= 1)	//MultiPV issues here
-		{	
+		{
 			newScore = -NegaScout(position, initialDepth, extendedDepth - 1, -beta, -a, -colour, distanceFromRoot + 1, true, locals, sharedData).GetScore();
 		}
 
@@ -392,7 +399,7 @@ SearchResult NegaScout(Position& position, unsigned int initialDepth, int depthR
 		b = a + 1;				//Set a new zero width window
 	}
 
-	//Checkmate or stalemate 
+	//Checkmate or stalemate
 	if (noLegalMoves)
 	{
 		return TerminalScore(position, distanceFromRoot);
@@ -529,7 +536,7 @@ int extension(const Position& position)
 {
 	int extension = 0;
 
-	if (IsSquareThreatened(position, position.GetKing(position.GetTurn()), position.GetTurn()))	
+	if (IsSquareThreatened(position, position.GetKing(position.GetTurn()), position.GetTurn()))
 		extension += 1;
 
 	return extension;
@@ -543,22 +550,13 @@ bool FutilityMoveGivesCheck(Position& position, Move move)
 	return ret;
 }
 
-bool IsFutile(Move move, int beta, int alpha, Position & position, bool IsInCheck)
-{
-	return !IsPV(beta, alpha)
-		&& !move.IsCapture() 
-		&& !move.IsPromotion() 
-		&& !IsInCheck
-		&& !FutilityMoveGivesCheck(position, move);
-}
-
 bool AllowedNull(bool allowedNull, const Position& position, int beta, int alpha, bool InCheck)
 {
 	return allowedNull
 		&& !InCheck
 		&& !IsPV(beta, alpha)
 		&& !IsEndGame(position)
-		&& GetBitCount(position.GetAllPieces()) >= 5;	//avoid null move pruning in very late game positions due to zanauag issues. Even with verification search e.g 8/6k1/8/8/8/8/1K6/Q7 w - - 0 1 
+		&& GetBitCount(position.GetAllPieces()) >= 5;	//avoid null move pruning in very late game positions due to zanauag issues. Even with verification search e.g 8/6k1/8/8/8/8/1K6/Q7 w - - 0 1
 }
 
 bool IsEndGame(const Position& position)
@@ -629,6 +627,7 @@ constexpr int TBWinIn(int distanceFromRoot)
 SearchResult Quiescence(Position& position, unsigned int initialDepth, int alpha, int beta, int colour, unsigned int distanceFromRoot, int depthRemaining, SearchData& locals, ThreadSharedData& sharedData)
 {
 	locals.ReportDepth(distanceFromRoot);
+	locals.AddNode();
 
 	if (distanceFromRoot >= MAX_DEPTH) return 0;						//Have we reached max depth?
 	locals.PvTable[distanceFromRoot].clear();
@@ -641,7 +640,7 @@ SearchResult Quiescence(Position& position, unsigned int initialDepth, int alpha
 	int staticScore = colour * EvaluatePositionNet(position, locals.evalTable);
 	if (staticScore >= beta) return staticScore;
 	if (staticScore > alpha) alpha = staticScore;
-	
+
 	Move bestmove = Move::Uninitialized;
 	int Score = staticScore;
 
@@ -650,8 +649,6 @@ SearchResult Quiescence(Position& position, unsigned int initialDepth, int alpha
 
 	while (gen.Next(move))
 	{
-		locals.AddNode();
-
 		int SEE = gen.GetSEE();
 
 		if (staticScore + SEE + Delta_margin < alpha) 						//delta pruning
