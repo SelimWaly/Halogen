@@ -198,6 +198,20 @@ SearchResult NegaScout(Position& position, unsigned int initialDepth, int depthR
 		|| position.GetFiftyMoveCount() > 100)							//cannot use >= as it could currently be checkmate which would count as a win
 		return 8 - (locals.GetThreadNodes() & 0b1111);					//as in https://github.com/Luecx/Koivisto/commit/c8f01211c290a582b69e4299400b667a7731a9f7 with permission from Koivisto authors.
 
+	//Query the transpotition table
+	if (!IsPV(beta, alpha))
+	{
+		TTEntry entry = tTable.GetEntry(position.GetZobristKey(), distanceFromRoot);
+		if (CheckEntry(entry, position.GetZobristKey(), depthRemaining))
+		{
+			tTable.ResetAge(position.GetZobristKey(), position.GetTurnCount(), distanceFromRoot);
+
+			if (!position.CheckForRep(distanceFromRoot, 2))	//Don't take scores from the TT if there's a two-fold repitition
+				if (UseTransposition(entry, alpha, beta))
+					return SearchResult(entry.GetScore(), entry.GetMove());
+		}
+	}
+
 	int Score = LowINF;
 	int MaxScore = HighINF;
 
@@ -215,12 +229,13 @@ SearchResult NegaScout(Position& position, unsigned int initialDepth, int depthR
 			locals.AddTbHit();
 			auto probe = UseSearchTBScore(result, distanceFromRoot);
 
-			if (probe.GetScore() == 0)
+			if (    probe.GetScore() == 0
+				|| (probe.GetScore() >= TBWinIn(MAX_DEPTH) && probe.GetScore() >= beta)
+				|| (probe.GetScore() <= TBLossIn(MAX_DEPTH) && probe.GetScore() <= alpha))
+			{
+				AddScoreToTable(probe, alpha, position, depthRemaining, distanceFromRoot, beta, Move());
 				return probe;
-			if (probe.GetScore() >= TBWinIn(MAX_DEPTH) && probe.GetScore() >= beta)
-				return probe;
-			if (probe.GetScore() <= TBLossIn(MAX_DEPTH) && probe.GetScore() <= alpha)
-				return probe;
+			}
 
 			// Why update score ?
 			// Because in a PV node we want the returned score to be accurate and reflect the TB score.
@@ -254,20 +269,6 @@ SearchResult NegaScout(Position& position, unsigned int initialDepth, int depthR
 					MaxScore = probe.GetScore();
 				}
 			}
-		}
-	}
-
-	//Query the transpotition table
-	if (!IsPV(beta, alpha))
-	{
-		TTEntry entry = tTable.GetEntry(position.GetZobristKey(), distanceFromRoot);
-		if (CheckEntry(entry, position.GetZobristKey(), depthRemaining))
-		{
-			tTable.ResetAge(position.GetZobristKey(), position.GetTurnCount(), distanceFromRoot);
-
-			if (!position.CheckForRep(distanceFromRoot, 2))	//Don't take scores from the TT if there's a two-fold repitition
-				if (UseTransposition(entry, alpha, beta))
-					return SearchResult(entry.GetScore(), entry.GetMove());
 		}
 	}
 
