@@ -93,16 +93,17 @@ bool MoveGenerator::Next(Move& move)
 		}
 	}
 
-	if (skipQuiets)
-		return false;
-
 	if (stage == Stage::GEN_QUIET)
 	{
 		moveList.clear();
-		QuietMoves(position, moveList);
-		OrderMoves(moveList);
-		current = moveList.begin();
-		stage = Stage::GIVE_QUIET;
+
+		if (!skipQuiets)
+		{
+			QuietMoves(position, moveList);
+			OrderMoves(moveList);
+			current = moveList.begin();
+			stage = Stage::GIVE_QUIET;
+		}
 	}
 
 	if (stage == Stage::GIVE_QUIET)
