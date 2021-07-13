@@ -22,7 +22,7 @@ constexpr int TBLossIn(int distanceFromRoot);
 constexpr int TBWinIn(int distanceFromRoot);
 unsigned int ProbeTBRoot(const Position& position);
 unsigned int ProbeTBSearch(const Position& position);
-SearchResult UseSearchTBScore(unsigned int result, int distanceFromRoot);
+int UseSearchTBScore(unsigned int result, int distanceFromRoot);
 Move GetTBMove(unsigned int result);
 
 void SearchPosition(Position position, ThreadSharedData& sharedData, unsigned int threadID);
@@ -227,11 +227,11 @@ SearchResult NegaScout(Position& position, unsigned int initialDepth, int depthR
 		if (result != TB_RESULT_FAILED)
 		{
 			locals.AddTbHit();
-			auto probe = UseSearchTBScore(result, distanceFromRoot);
+			int probe = UseSearchTBScore(result, distanceFromRoot);
 
-			if (    probe.GetScore() == 0
-				|| (probe.GetScore() >= TBWinIn(MAX_DEPTH) && probe.GetScore() >= beta)
-				|| (probe.GetScore() <= TBLossIn(MAX_DEPTH) && probe.GetScore() <= alpha))
+			if (    probe == 0
+				|| (probe >= TBWinIn(MAX_DEPTH) && probe >= beta)
+				|| (probe <= TBLossIn(MAX_DEPTH) && probe <= alpha))
 			{
 				AddScoreToTable(probe, alpha, position, depthRemaining, distanceFromRoot, beta, Move());
 				return probe;
@@ -441,7 +441,7 @@ unsigned int ProbeTBSearch(const Position& position)
 		position.GetTurn());
 }
 
-SearchResult UseSearchTBScore(unsigned int result, int distanceFromRoot)
+int UseSearchTBScore(unsigned int result, int distanceFromRoot)
 {
 	int score = -1;
 
