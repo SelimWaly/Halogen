@@ -259,14 +259,14 @@ SearchResult NegaScout(Position& position, unsigned int initialDepth, int depthR
 
 			if (IsPV(beta, alpha))
 			{
-				if (probe.GetScore() >= TBWinIn(MAX_DEPTH))
+				if (probe >= TBWinIn(MAX_DEPTH))
 				{
-					Score = probe.GetScore();
-					alpha = std::max(alpha, probe.GetScore());
+					Score = probe;
+					alpha = std::max(alpha, probe);
 				}
 				else
 				{
-					MaxScore = probe.GetScore();
+					MaxScore = probe;
 				}
 			}
 		}
