@@ -115,7 +115,15 @@ bool MoveGenerator::Next(Move& move)
 
 void MoveGenerator::AdjustHistory(const Move& move, SearchData& Locals, int depthRemaining) const
 {
+	assert(!move.IsCapture());
+	assert(!move.IsPromotion());
+
 	Locals.AddHistory(position.GetTurn(), move.GetFrom(), move.GetTo(), depthRemaining * depthRemaining);
+
+	for (auto const& m : loudMoves)
+	{
+		Locals.AddHistory(position.GetTurn(), m.move.GetFrom(), m.move.GetTo(), -depthRemaining * depthRemaining);
+	}
 
 	for (auto const& m : quietMoves)
 	{
