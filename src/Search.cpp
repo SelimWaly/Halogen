@@ -244,6 +244,7 @@ SearchResult AspirationWindowSearch(Position position, int depth, int prevScore,
 		if (search.GetScore() >= beta)
 		{
 			sharedData.ReportResult(depth, locals.limits.ElapsedTime(), beta, alpha, beta, position, search.GetMove(), locals);
+			sharedData.UpdateBestMove(search.GetMove());
 			beta = std::min<int>(MATE, beta + delta);
 		}
 
@@ -720,7 +721,7 @@ SearchResult Quiescence(Position& position, unsigned int initialDepth, int alpha
 
 	while (gen.Next(move))
 	{
-		int SEE = gen.GetSEE();
+		int SEE = gen.GetSEE(move);
 
 		if (staticScore + SEE + Delta_margin < alpha) 						//delta pruning
 			break;
