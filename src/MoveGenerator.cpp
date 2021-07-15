@@ -300,7 +300,7 @@ void MoveGenerator::OrderMoves(ExtendedMoveList& moves)
 				history += locals.history.CounterMove(prevPiece, prevMove.GetTo(), currentPiece, moves[i].move.GetTo());
 			}
 
-			moves[i].score = history / 2;
+			moves[i].score = history;
 		}
 	}
 
