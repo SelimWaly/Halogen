@@ -727,6 +727,9 @@ void RetrogradePlayout(std::string input, int pieceCount, std::string output)
 
 	int completed = 0;
 
+	std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
+	std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
+
 	std::string line;
 	while (std::getline(source, line))
 	{
@@ -746,6 +749,13 @@ void RetrogradePlayout(std::string input, int pieceCount, std::string output)
 
 		dest << fen << " " << *score << "\n";
 		completed++;
+
+		if (completed % 10000 == 0)
+		{
+			end = std::chrono::steady_clock::now();
+			std::cout << 10000 / double(std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count()) * 1000000 << " positions per second" << std::endl;
+			begin = std::chrono::steady_clock::now();
+		}
 	}
 }
 
