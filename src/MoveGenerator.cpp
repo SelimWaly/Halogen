@@ -281,7 +281,7 @@ void MoveGenerator::OrderMoves(ExtendedMoveList& moves)
 		//Quiet
 		else
 		{
-			int history = 0;
+			int history = locals.history.GetCounterMove(position, moves[i].move);
 			moves[i].score = std::clamp<int>(history, std::numeric_limits<decltype(moves[i].score)>::min(), std::numeric_limits<decltype(moves[i].score)>::max());
 		}
 	}
