@@ -599,14 +599,9 @@ void RetrogradeSplit(std::string input)
 	std::string line;
 	while (std::getline(source, line))
 	{
-		std::size_t last_word = line.find_last_of(' ');
-
-		std::string fen = line.substr(0, last_word);
-		std::string result = line.substr(last_word + 1);
-
-		if (!position.InitialiseFromFen(fen))
+		if (!position.InitialiseFromFen(line))
 		{
-			std::cout << "Ignored bad fen " << fen << "\n";
+			std::cout << "Ignored bad fen " << line << "\n";
 			continue;
 		}
 
@@ -614,10 +609,10 @@ void RetrogradeSplit(std::string input)
 
 		if (pieces > 32)
 		{
-			std::cout << "Somehow got more than 32 pieces??" << fen << "\n";
+			std::cout << "Somehow got more than 32 pieces??" << line << "\n";
 		}
 
-		outputFiles[pieces] << fen << " [" << result << "]\n";
+		outputFiles[pieces] << line << "\n";
 	}
 }
 
