@@ -12,7 +12,10 @@ ThreadSharedData::ThreadSharedData(const SearchLimits& limits, const SearchParam
 {
 	noOutput = NoOutput;
 	ThreadWantsToStop.resize(param.threads, false);
-	threadlocalData.resize(param.threads, SearchData(limits));
+
+	threadlocalData.reserve(param.threads);
+	for (int i = 0; i < param.threads; i++)
+		threadlocalData.emplace_back(limits);
 }
 
 Move ThreadSharedData::GetBestMove() const
@@ -277,17 +280,6 @@ void History::AddHistory(int16_t& val, int change)
 	val += 32 * change - val * abs(change) / 512;
 }
 
-History::History(const History& other) :
-	butterfly(std::make_unique<History::ButterflyType>(*other.butterfly))
-{
-}
-
-History& History::operator=(const History& other)
-{
-	butterfly = std::make_unique<History::ButterflyType>(*other.butterfly);
-	return *this;
-}
-
 void History::AddButterfly(const Position& position, Move move, int change)
 {
 	assert(move != Move::Uninitialized);
@@ -297,7 +289,7 @@ void History::AddButterfly(const Position& position, Move move, int change)
 	assert(move.GetFrom() != N_SQUARES);
 	assert(move.GetTo() != N_SQUARES);
 
-	AddHistory((*butterfly)[position.GetTurn()][move.GetFrom()][move.GetTo()], change);
+	AddHistory(butterfly[position.GetTurn()][move.GetFrom()][move.GetTo()], change);
 }
 
 int16_t History::GetButterfly(const Position& position, Move move) const
@@ -309,7 +301,7 @@ int16_t History::GetButterfly(const Position& position, Move move) const
 	assert(move.GetFrom() != N_SQUARES);
 	assert(move.GetTo() != N_SQUARES);
 
-	return (*butterfly)[position.GetTurn()][move.GetFrom()][move.GetTo()];
+	return butterfly[position.GetTurn()][move.GetFrom()][move.GetTo()];
 }
 
 void History::AddCounterMove(const Position& position, Move move, int change)
@@ -327,7 +319,7 @@ void History::AddCounterMove(const Position& position, Move move, int change)
 	assert(prevMove.GetTo() != N_SQUARES);
 	assert(move.GetTo() != N_SQUARES);
 
-	AddHistory((*counterMove)[prevPiece][prevMove.GetTo()][currentPiece][move.GetTo()], change);
+	AddHistory(counterMove[prevPiece][prevMove.GetTo()][currentPiece][move.GetTo()], change);
 }
 
 int16_t History::GetCounterMove(const Position& position, Move move) const
@@ -345,5 +337,5 @@ int16_t History::GetCounterMove(const Position& position, Move move) const
 	assert(prevMove.GetTo() != N_SQUARES);
 	assert(move.GetTo() != N_SQUARES);
 
-	return (*counterMove)[prevPiece][prevMove.GetTo()][currentPiece][move.GetTo()];
+	return counterMove[prevPiece][prevMove.GetTo()][currentPiece][move.GetTo()];
 }

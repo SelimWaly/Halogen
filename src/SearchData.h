@@ -40,12 +40,6 @@ private:
 class History
 {
 public:
-	History() = default;
-	History(const History& other);
-	History(History&& other) = default;
-	History& operator=(const History& other);
-	History& operator=(History&&) = default;
-	
 	void AddButterfly(const Position& position, Move move, int change);
 	int16_t GetButterfly(const Position& position, Move move) const;
 
@@ -55,14 +49,8 @@ public:
 private:
 	void AddHistory(int16_t& val, int change);
 
-	// [side][from][to]
-	using ButterflyType = std::array<std::array<std::array<int16_t, N_SQUARES>, N_SQUARES>, N_PLAYERS>;
-
-	//[prev_piece][prev_to][piece][to]
-	using CounterMoveType = std::array<std::array<std::array<std::array<int16_t, N_SQUARES>, N_PIECES>, N_SQUARES>, N_PIECES>;
-
-	std::unique_ptr<ButterflyType> butterfly = std::make_unique<ButterflyType>();
-	std::unique_ptr<CounterMoveType> counterMove = std::make_unique<CounterMoveType>();
+	std::array<std::array<std::array<int16_t, N_SQUARES>, N_SQUARES>, N_PLAYERS> butterfly = {};
+	std::array<std::array<std::array<std::array<int16_t, N_SQUARES>, N_PIECES>, N_SQUARES>, N_PIECES> counterMove = {};
 };
 
 struct SearchData
