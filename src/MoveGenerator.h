@@ -46,7 +46,7 @@ public:
 	Stage GetStage() const { return stage; }
 
 private:
-	void OrderMoves(ExtendedMoveList& moves);
+	void ScoreMoves(ExtendedMoveList& moves);
 
 	// Data needed for use in ordering or generating moves
 	Position& position;
