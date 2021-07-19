@@ -13,6 +13,21 @@ bool MoveGenerator::Next(Move& move)
 {
 	moveSEE = std::nullopt;
 
+	auto GetNextBestMove = [&](auto& heap)
+	{
+		move = heap.begin()->move;
+		moveSEE = heap.begin()->SEE;
+
+		std::pop_heap(heap.begin(), heap.end());
+		heap.pop_back();
+	};
+
+	auto InitializeMoveHeap = [&](auto& list)
+	{
+		ScoreMoves(list);
+		std::make_heap(list.begin(), list.end());
+	};
+
 	if (stage == Stage::TT_MOVE)
 	{
 		TTmove = GetHashMove(position, distanceFromRoot);
@@ -28,18 +43,15 @@ bool MoveGenerator::Next(Move& move)
 	if (stage == Stage::GEN_LOUD)
 	{
 		QuiescenceMoves(position, loudMoves);
-		OrderMoves(loudMoves);
-		current = loudMoves.begin();
+		InitializeMoveHeap(loudMoves);
 		stage = Stage::GIVE_GOOD_LOUD;
 	}
 
 	if (stage == Stage::GIVE_GOOD_LOUD)
 	{
-		if (current != loudMoves.end() && current->SEE >= 0)
+		if (loudMoves.size() && loudMoves.begin()->SEE >= 0)
 		{
-			move = current->move;
-			moveSEE = current->SEE;
-			++current;
+			GetNextBestMove(loudMoves);
 			return true;
 		}
 
@@ -75,11 +87,9 @@ bool MoveGenerator::Next(Move& move)
 
 	if (stage == Stage::GIVE_BAD_LOUD)
 	{
-		if (current != loudMoves.end())
+		if (loudMoves.size())
 		{
-			move = current->move;
-			moveSEE = current->SEE;
-			++current;
+			GetNextBestMove(loudMoves);
 			return true;
 		}
 		else
@@ -94,18 +104,15 @@ bool MoveGenerator::Next(Move& move)
 	if (stage == Stage::GEN_QUIET)
 	{
 		QuietMoves(position, quietMoves);
-		OrderMoves(quietMoves);
-		current = quietMoves.begin();
+		InitializeMoveHeap(quietMoves);
 		stage = Stage::GIVE_QUIET;
 	}
 
 	if (stage == Stage::GIVE_QUIET)
 	{
-		if (current != quietMoves.end())
+		if (quietMoves.size())
 		{
-			move = current->move;
-			moveSEE = current->SEE;
-			++current;
+			GetNextBestMove(quietMoves);
 			return true;
 		}
 	}
@@ -222,7 +229,7 @@ int16_t MoveGenerator::GetSEE(Move move) const
 		return see(position, move);
 }
 
-void MoveGenerator::OrderMoves(ExtendedMoveList& moves)
+void MoveGenerator::ScoreMoves(ExtendedMoveList& moves)
 {
 	static constexpr int16_t SCORE_QUEEN_PROMOTION = 30000;
 	static constexpr int16_t SCORE_CAPTURE = 20000;
@@ -285,8 +292,6 @@ void MoveGenerator::OrderMoves(ExtendedMoveList& moves)
 			moves[i].score = std::clamp<int>(history, std::numeric_limits<decltype(moves[i].score)>::min(), std::numeric_limits<decltype(moves[i].score)>::max());
 		}
 	}
-
-	selection_sort(moves);
 }
 
 Move GetHashMove(const Position& position, int depthRemaining, int distanceFromRoot)

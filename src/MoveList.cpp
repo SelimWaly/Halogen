@@ -47,3 +47,9 @@ void FixedVector<T>::erase(size_t index)
 	moveCount--;
 }
 
+template<typename T>
+void FixedVector<T>::pop_back()
+{
+	moveCount--;
+}
+

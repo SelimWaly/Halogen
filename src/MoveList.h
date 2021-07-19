@@ -57,6 +57,7 @@ public:
 
 	void clear();
 	void erase(size_t index);
+	void pop_back();
 
 	const T& operator[](size_t index) const { return list[index]; }
 	      T& operator[](size_t index)       { return list[index]; }

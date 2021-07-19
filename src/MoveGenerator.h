@@ -46,7 +46,7 @@ public:
 	Stage GetStage() const { return stage; }
 
 private:
-	void OrderMoves(ExtendedMoveList& moves);
+	void ScoreMoves(ExtendedMoveList& moves);
 
 	// Data needed for use in ordering or generating moves
 	Position& position;
@@ -58,7 +58,6 @@ private:
 
 	// Data uses for keeping track of internal values
 	Stage stage;
-	ExtendedMoveList::iterator current;
 
 	// We use SEE for ordering the moves, but SEE is also used in QS.
 	// See the body of GetSEE for usage.
