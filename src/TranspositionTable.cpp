@@ -90,12 +90,13 @@ int TranspositionTable::GetCapacity(int halfmove) const
 
 void TranspositionTable::ResetTable()
 {
-	table.reallocate(table.size());
+	std::fill(table.begin(), table.end(), TTBucket());
 }
 
 void TranspositionTable::SetSize(uint64_t MB)
 {
-	table.reallocate(CalculateSize(MB));
+	table.clear();
+	table.resize(MB * 1024 * 1024 / sizeof(TTBucket));
 }
 
 void TranspositionTable::PreFetch(uint64_t key) const
