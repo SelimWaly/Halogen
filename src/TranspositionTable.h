@@ -27,7 +27,6 @@ private:
     template <typename T>
     class default_init_allocator : public std::allocator<T> 
     {
-    pub
         template <typename U> 
         struct rebind { using other = default_init_allocator<U>; };
 
