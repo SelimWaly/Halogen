@@ -13,7 +13,7 @@ POPCNTFLAGS = -DUSE_POPCNT -msse3 -mpopcnt
 PEXTFLAGS   = $(POPCNTFLAGS) -DUSE_PEXT -mbmi2
 AVX2FLAGS   = -DUSE_AVX2 -msse -msse3 -mpopcnt -mavx2 -msse4.1 -mssse3 -msse2
 
-$(shell	xd.exe -dlabel 4526ac9f.nn Weights.h)
+$(shell	./xd.exe -dlabel 4526ac9f.nn Weights.h)
 
 default:
 	$(CC) $(CFLAGS) $(SRC) $(LIBS) $(POPCNTFLAGS) -o $(EXE)
