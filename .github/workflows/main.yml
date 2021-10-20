@@ -16,7 +16,7 @@ jobs:
       - name: Create default build
         run: |
          cd src
-         make
+         sudo make
           
       - name: Run bench
         run: |
