@@ -1,7 +1,5 @@
 #include "Network.h"
-#include "incbin/incbin.h"
-
-INCBIN(Net, "4526ac9f.nn");
+#include "Weights.h"
 
 std::array<std::array<int16_t, HIDDEN_NEURONS>, INPUT_NEURONS> Network::hiddenWeights = {};
 std::array<int16_t, HIDDEN_NEURONS> Network::hiddenBias = {};
@@ -33,7 +31,7 @@ void DotProduct(const std::array<T_in, SIZE>& a, const std::array<T_in, SIZE>& b
 
 void Network::Init()
 {
-    auto Data = reinterpret_cast<const float*>(gNetData);
+    auto Data = reinterpret_cast<const float*>(label);
 
     for (size_t i = 0; i < HIDDEN_NEURONS; i++)
         hiddenBias[i] = (int16_t)round(*Data++ * PRECISION);

@@ -42,21 +42,29 @@ private:
 public:
 	//Pass arguments to construct the ExtendedMove()
 	template <typename... Args>
-	void Append(Args&&... args);
+	void Append(Args&&... args)
+	{
+		list[moveCount++] = { args... };
+	}
 
 	using iterator = typename decltype(list)::iterator;
 	using const_iterator = typename decltype(list)::const_iterator;
 
-	iterator begin();
-	iterator end();
+	iterator begin() { return list.begin(); }
+	iterator end() { return list.begin() + moveCount; }
 
-	const_iterator begin() const;
-	const_iterator end() const;
+	const_iterator begin() const { return list.begin(); }
+	const_iterator end() const { return list.begin() + moveCount; }
 
-	size_t size() const;
+	size_t size() const { return moveCount; }
 
-	void clear();
-	void erase(size_t index);
+	void clear() { moveCount = 0; }
+
+	void erase(size_t index) 
+	{
+		std::move(list.begin() + index + 1, list.end(), list.begin() + index);
+		moveCount--;
+	}
 
 	const T& operator[](size_t index) const { return list[index]; }
 	      T& operator[](size_t index)       { return list[index]; }
@@ -64,10 +72,3 @@ public:
 private:
 	size_t moveCount = 0;
 };
-
-template <typename T>
-template <typename ...Args>
-inline void FixedVector<T>::Append(Args&& ...args)
-{
-	list[moveCount++] = { args... };
-}
