@@ -426,7 +426,7 @@ std::array<int16_t, INPUT_NEURONS> Position::GetInputLayer() const
 
 		for (int sq = 0; sq < N_SQUARES; sq++)
 		{
-			ret[i * 64 + sq] = ((bb & SquareBB[sq]) != 0);
+			ret[i * 64 + sq] = ((bb & SquareBB(sq)) != 0);
 		}
 	}
 

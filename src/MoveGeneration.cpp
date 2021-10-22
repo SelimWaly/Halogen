@@ -139,33 +139,33 @@ uint64_t PinnedMask(const Position& position)
 		//If a piece is moving from the same diagonal as the king, and that diagonal contains an enemy bishop or queen
 		if ((GetDiagonal(king) == GetDiagonal(sq)) && (DiagonalBB[GetDiagonal(king)] & (position.GetPieceBB(BISHOP, !turn) | position.GetPieceBB(QUEEN, !turn))))
 		{
-			mask |= SquareBB[sq];
+			mask |= SquareBB(sq);
 			continue;
 		}
 
 		//If a piece is moving from the same anti-diagonal as the king, and that diagonal contains an enemy bishop or queen
 		if ((GetAntiDiagonal(king) == GetAntiDiagonal(sq)) && (AntiDiagonalBB[GetAntiDiagonal(king)] & (position.GetPieceBB(BISHOP, !turn) | position.GetPieceBB(QUEEN, !turn))))
 		{
-			mask |= SquareBB[sq];
+			mask |= SquareBB(sq);
 			continue;
 		}
 
 		//If a piece is moving from the same file as the king, and that file contains an enemy rook or queen
 		if ((GetFile(king) == GetFile(sq)) && (FileBB[GetFile(king)] & (position.GetPieceBB(ROOK, !turn) | position.GetPieceBB(QUEEN, !turn))))
 		{
-			mask |= SquareBB[sq];
+			mask |= SquareBB(sq);
 			continue;
 		}
 
 		//If a piece is moving from the same rank as the king, and that rank contains an enemy rook or queen
 		if ((GetRank(king) == GetRank(sq)) && (RankBB[GetRank(king)] & (position.GetPieceBB(ROOK, !turn) | position.GetPieceBB(QUEEN, !turn))))
 		{
-			mask |= SquareBB[sq];
+			mask |= SquareBB(sq);
 			continue;
 		}
 	}
 
-	mask |= SquareBB[king];
+	mask |= SquareBB(king);
 	return mask;
 }
 
@@ -177,7 +177,7 @@ void AppendLegalMoves(Square from, uint64_t to, Position& position, MoveFlag fla
 	{
 		Square target = static_cast<Square>(LSBpop(to));
 		Move move(from, target, flag);
-		if (!(pinned & SquareBB[from]) || !MovePutsSelfInCheck(position, move))
+		if (!(pinned & SquareBB(from)) || !MovePutsSelfInCheck(position, move))
 			moves.Append(move);
 	}
 }
@@ -190,7 +190,7 @@ void AppendLegalMoves(uint64_t from, Square to, Position& position, MoveFlag fla
 	{
 		Square source = static_cast<Square>(LSBpop(from));
 		Move move(source, to, flag);
-		if (!(pinned & SquareBB[source]) || !MovePutsSelfInCheck(position, move))
+		if (!(pinned & SquareBB(source)) || !MovePutsSelfInCheck(position, move))
 			moves.Append(move);
 	}
 }
@@ -217,7 +217,7 @@ void CaptureThreat(Position& position, FixedVector<T>& moves, uint64_t threats)
 	Square square = static_cast<Square>(LSBpop(threats));
 
 	uint64_t potentialCaptures = GetThreats(position, square, !position.GetTurn())
-		& ~SquareBB[position.GetKing(position.GetTurn())]									//King captures handelled in KingCapturesEvade()
+		& ~SquareBB(position.GetKing(position.GetTurn()))									//King captures handelled in KingCapturesEvade()
 		& ~position.GetPieceBB(Piece(PAWN, position.GetTurn()));							//Pawn captures handelled elsewhere
 
 	AppendLegalMoves(potentialCaptures, square, position, CAPTURE, moves);
@@ -289,7 +289,7 @@ void PawnPushes(Position& position, FixedVector<T>& moves, uint64_t pinned)
 
 		Move move(start, end, QUIET);
 
-		if (!(pinned & SquareBB[start]) || !MovePutsSelfInCheck(position, move))
+		if (!(pinned & SquareBB(start)) || !MovePutsSelfInCheck(position, move))
 			moves.Append(move);
 	}
 }
@@ -320,7 +320,7 @@ void PawnPromotions(Position& position, FixedVector<T>& moves, uint64_t pinned)
 		Square start = static_cast<Square>(end - foward);
 
 		Move move(start, end, KNIGHT_PROMOTION);
-		if ((pinned & SquareBB[start]) && MovePutsSelfInCheck(position, move))
+		if ((pinned & SquareBB(start)) && MovePutsSelfInCheck(position, move))
 			continue;
 
 		moves.Append(move);
@@ -359,7 +359,7 @@ void PawnDoublePushes(Position& position, FixedVector<T>& moves, uint64_t pinned
 
 		Move move(start, end, PAWN_DOUBLE_MOVE);
 
-		if (!(pinned & SquareBB[start]) || !MovePutsSelfInCheck(position, move))
+		if (!(pinned & SquareBB(start)) || !MovePutsSelfInCheck(position, move))
 			moves.Append(move);
 	}
 }
@@ -404,7 +404,7 @@ void PawnCaptures(Position& position, FixedVector<T>& moves, uint64_t pinned)
 		Square start = static_cast<Square>(end - fowardleft);
 
 		Move move(start, end, CAPTURE);
-		if ((pinned & SquareBB[start]) && MovePutsSelfInCheck(position, move))
+		if ((pinned & SquareBB(start)) && MovePutsSelfInCheck(position, move))
 			continue;
 
 		if (GetRank(end) == RANK_1 || GetRank(end) == RANK_8)
@@ -424,7 +424,7 @@ void PawnCaptures(Position& position, FixedVector<T>& moves, uint64_t pinned)
 		Square start = static_cast<Square>(end - fowardright);
 
 		Move move(start, end, CAPTURE);
-		if ((pinned & SquareBB[start]) && MovePutsSelfInCheck(position, move))
+		if ((pinned & SquareBB(start)) && MovePutsSelfInCheck(position, move))
 			continue;
 
 		if (GetRank(end) == RANK_1 || GetRank(end) == RANK_8)
@@ -570,7 +570,7 @@ uint64_t GetThreats(const Position& position, Square square, Players colour)
 	{
 		unsigned int start = LSBpop(queen);
 		if (mayMove(start, square, Pieces))
-			threats |= SquareBB[start];
+			threats |= SquareBB(start);
 	}
 
 	uint64_t bishops = position.GetPieceBB(BISHOP, !colour) & BishopAttacks[square];
@@ -578,7 +578,7 @@ uint64_t GetThreats(const Position& position, Square square, Players colour)
 	{
 		unsigned int start = LSBpop(bishops);
 		if (mayMove(start, square, Pieces))
-			threats |= SquareBB[start];
+			threats |= SquareBB(start);
 	}
 
 	uint64_t rook = position.GetPieceBB(ROOK, !colour) & RookAttacks[square];
@@ -586,7 +586,7 @@ uint64_t GetThreats(const Position& position, Square square, Players colour)
 	{
 		unsigned int start = LSBpop(rook);
 		if (mayMove(start, square, Pieces))
-			threats |= SquareBB[start];
+			threats |= SquareBB(start);
 	}
 
 	return threats;
@@ -672,31 +672,31 @@ bool MoveIsLegal(Position& position, const Move& move)
 	/*Check the pieces can actually move as required*/
 	if (piece == WHITE_KNIGHT || piece == BLACK_KNIGHT)
 	{
-		if ((SquareBB[move.GetTo()] & KnightAttacks[move.GetFrom()]) == 0)
+		if ((SquareBB(move.GetTo()) & KnightAttacks[move.GetFrom()]) == 0)
 			return false;
 	}
 
 	if ((piece == WHITE_KING || piece == BLACK_KING) && !(move.GetFlag() == KING_CASTLE || move.GetFlag() == QUEEN_CASTLE))
 	{
-		if ((SquareBB[move.GetTo()] & KingAttacks[move.GetFrom()]) == 0)
+		if ((SquareBB(move.GetTo()) & KingAttacks[move.GetFrom()]) == 0)
 			return false;
 	}
 
 	if (piece == WHITE_ROOK || piece == BLACK_ROOK)
 	{
-		if ((SquareBB[move.GetTo()] & RookAttacks[move.GetFrom()]) == 0)
+		if ((SquareBB(move.GetTo()) & RookAttacks[move.GetFrom()]) == 0)
 			return false;
 	}
 
 	if (piece == WHITE_BISHOP || piece == BLACK_BISHOP)
 	{
-		if ((SquareBB[move.GetTo()] & BishopAttacks[move.GetFrom()]) == 0)
+		if ((SquareBB(move.GetTo()) & BishopAttacks[move.GetFrom()]) == 0)
 			return false;
 	}
 
 	if (piece == WHITE_QUEEN || piece == BLACK_QUEEN)
 	{
-		if ((SquareBB[move.GetTo()] & QueenAttacks[move.GetFrom()]) == 0)
+		if ((SquareBB(move.GetTo()) & QueenAttacks[move.GetFrom()]) == 0)
 			return false;
 	}
 

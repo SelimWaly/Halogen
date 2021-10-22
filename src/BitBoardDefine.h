@@ -304,14 +304,6 @@ namespace BitBoardInit	//so these don't polute the global scope
 		return ret;
 	}
 
-	constexpr std::array<uint64_t, N_SQUARES> Square()
-	{
-		std::array<uint64_t, N_SQUARES> ret {};
-		for (unsigned int i = 0; i < N_SQUARES; i++)
-			ret[i] = 1ULL << i;
-		return ret;
-	}
-
 	constexpr std::array<uint64_t, N_DIAGONALS> Diagonal()
 	{
 		std::array<uint64_t, N_DIAGONALS> ret { 0x100000000000000 };
@@ -369,7 +361,7 @@ namespace BitBoardInit	//so these don't polute the global scope
 
 constexpr std::array<uint64_t, N_RANKS> RankBB = BitBoardInit::Rank();
 constexpr std::array<uint64_t, N_FILES> FileBB = BitBoardInit::File();
-constexpr std::array<uint64_t, N_SQUARES> SquareBB = BitBoardInit::Square();
+constexpr uint64_t SquareBB(int sq) { return 1ULL << sq; }
 constexpr std::array<uint64_t, N_DIAGONALS> DiagonalBB = BitBoardInit::Diagonal();
 constexpr std::array<uint64_t, N_ANTI_DIAGONALS> AntiDiagonalBB = BitBoardInit::AntiDiagonal();
 constexpr std::array<std::array<uint64_t, N_SQUARES>, N_SQUARES> betweenArray = BitBoardInit::BetweenArray();
@@ -382,7 +374,7 @@ namespace BitBoardInit
 		for (unsigned int i = 0; i < N_SQUARES; i++)
 			for (unsigned int j = 0; j < N_SQUARES; j++)
 				if ((AbsRankDiff(i, j) == 1 && AbsFileDiff(i, j) == 2) || (AbsRankDiff(i, j) == 2 && AbsFileDiff(i, j) == 1))
-					ret[i] |= SquareBB[j];
+					ret[i] |= SquareBB(j);
 		return ret;
 	}
 
@@ -390,7 +382,7 @@ namespace BitBoardInit
 	{
 		std::array<uint64_t, N_SQUARES> ret{};
 		for (unsigned int i = 0; i < N_SQUARES; i++)
-			ret[i] = (RankBB[GetRank(i)] | FileBB[GetFile(i)]) ^ SquareBB[i];
+			ret[i] = (RankBB[GetRank(i)] | FileBB[GetFile(i)]) ^ SquareBB(i);
 		return ret;
 	}
 
@@ -398,7 +390,7 @@ namespace BitBoardInit
 	{
 		std::array<uint64_t, N_SQUARES> ret{};
 		for (unsigned int i = 0; i < N_SQUARES; i++)
-			ret[i] = (DiagonalBB[GetDiagonal(i)] | AntiDiagonalBB[GetAntiDiagonal(i)]) ^ SquareBB[i];
+			ret[i] = (DiagonalBB[GetDiagonal(i)] | AntiDiagonalBB[GetAntiDiagonal(i)]) ^ SquareBB(i);
 		return ret;
 	}
 
@@ -408,7 +400,7 @@ namespace BitBoardInit
 		for (unsigned int i = 0; i < N_SQUARES; i++)
 			for (unsigned int j = 0; j < N_SQUARES; j++)
 				if (i != j && AbsFileDiff(i, j) <= 1 && AbsRankDiff(i, j) <= 1)
-					ret[i] |= SquareBB[j];
+					ret[i] |= SquareBB(j);
 		return ret;
 	}
 
@@ -418,11 +410,11 @@ namespace BitBoardInit
 		for (unsigned int i = 0; i < N_SQUARES; i++)
 			for (unsigned int j = 0; j < N_SQUARES; j++)
 				if ((AbsFileDiff(i, j) == 1) && RankDiff(j, i) == 1)		//either side one ahead
-					ret[WHITE][i] |= SquareBB[j];
+					ret[WHITE][i] |= SquareBB(j);
 		for (unsigned int i = 0; i < N_SQUARES; i++)
 			for (unsigned int j = 0; j < N_SQUARES; j++)
 				if ((AbsFileDiff(i, j) == 1) && RankDiff(j, i) == -1)		//either side one behind
-					ret[BLACK][i] |= SquareBB[j];
+					ret[BLACK][i] |= SquareBB(j);
 		return ret;
 	}
 }

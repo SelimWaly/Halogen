@@ -133,8 +133,8 @@ constexpr uint64_t MakeSliderAttackBB(Square sq, uint64_t occupied, const std::a
 	for (int dir = 0; dir < 4; dir++) {
 
 		int s = sq;
-		while (!(occupied & SquareBB[s]) && LandingSquareBB(s, steps[dir]))
-			attacks |= SquareBB[(s += steps[dir])];
+		while (!(occupied & SquareBB(s)) && LandingSquareBB(s, steps[dir]))
+			attacks |= SquareBB((s += steps[dir]));
 	}
 
 	return attacks;

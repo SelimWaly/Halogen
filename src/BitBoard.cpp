@@ -89,7 +89,7 @@ void BitBoard::SetSquare(Square square, Pieces piece)
 	ClearSquare(square);
 
 	if (piece < N_PIECES)	//it is possible we might set a square to be empty using this function rather than using the ClearSquare function below. 
-		previousBoards.back()[piece] |= SquareBB[square];
+		previousBoards.back()[piece] |= SquareBB(square);
 
 	RecalculateWhiteBlackBoards();
 }
@@ -105,7 +105,7 @@ void BitBoard::ClearSquare(Square square)
 
 	for (int i = 0; i < N_PIECES; i++)
 	{
-		previousBoards.back()[i] &= ~SquareBB[square];
+		previousBoards.back()[i] &= ~SquareBB(square);
 	}
 
 	RecalculateWhiteBlackBoards();
@@ -125,7 +125,7 @@ Square BitBoard::GetKing(Players colour) const
 bool BitBoard::IsEmpty(Square square) const
 {
 	assert(square != N_SQUARES);
-	return ((GetAllPieces() & SquareBB[square]) == 0);
+	return ((GetAllPieces() & SquareBB(square)) == 0);
 }
 
 bool BitBoard::IsOccupied(Square square) const
@@ -137,14 +137,14 @@ bool BitBoard::IsOccupied(Square square) const
 bool BitBoard::IsOccupied(Square square, Players colour) const
 {
 	assert(square != N_SQUARES);
-	return colour == WHITE ? (GetWhitePieces() & SquareBB[square]) : (GetBlackPieces() & SquareBB[square]);
+	return colour == WHITE ? (GetWhitePieces() & SquareBB(square)) : (GetBlackPieces() & SquareBB(square));
 }
 
 Pieces BitBoard::GetSquare(Square square) const
 {
 	for (int i = 0; i < N_PIECES; i++)
 	{
-		if ((GetPieceBB(static_cast<Pieces>(i)) & SquareBB[square]) != 0)
+		if ((GetPieceBB(static_cast<Pieces>(i)) & SquareBB(square)) != 0)
 			return static_cast<Pieces>(i);
 	}
 
