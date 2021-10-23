@@ -3,7 +3,6 @@
 #include "BoardParameters.h"
 #include "BitBoard.h"
 #include "Zobrist.h"
-#include "Network.h"
 #include <sstream>
 
 constexpr size_t NodeCountChunk = 1 << 12;
@@ -40,8 +39,6 @@ public:
 	void ApplyMoveQuick(Move move);	//does ApplyMove functionality but much quicker.
 	void RevertMoveQuick();			//does RevertMove functionality but much quicker.
 
-	int16_t GetEvaluation() const;
-
 	bool CheckForRep(int distanceFromRoot, int maxReps) const;
 
 	Move GetPreviousMove() const;
@@ -53,12 +50,9 @@ private:
 	uint64_t GenerateZobristKey() const;
 	uint64_t IncrementZobristKey(Move move);	
 
-	std::array<int16_t, INPUT_NEURONS> GetInputLayer() const;
-
 	void SetSquareAndNotifyNetwork(Square square, Pieces piece);
 	void ClearSquareAndNotifyNetwork(Square square);
 
-	Network net;
 	std::vector<Move> moveStack;
 };
 

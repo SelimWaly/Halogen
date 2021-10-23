@@ -1,5 +1,6 @@
 #include "Benchmark.h"
 #include "Search.h"
+#include <fstream>
 
 using namespace::std;
 
@@ -17,7 +18,6 @@ int main(int argc, char* argv[])
 	tb_init("<empty>");
 
 	ZobristInit();
-	Network::Init();
 
 	string Line;					//to read the command given by the GUI
 	cout.setf(ios::unitbuf);		// Make sure that the outputs are sent straight away to the GUI
