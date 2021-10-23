@@ -2,6 +2,8 @@
 #include "Search.h"
 #include "Zobrist.h"
 
+#include <fstream>
+
 using namespace ::std;
 
 void PerftSuite();
@@ -16,8 +18,6 @@ int main(int argc, char* argv[])
 {
     PrintVersion();
     tb_init("<empty>");
-
-    Network::Init();
 
     string Line; //to read the command given by the GUI
 

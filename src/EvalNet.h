@@ -1,7 +1,6 @@
 #pragma once
 #include "Position.h"
-#include <algorithm>
-#include <array>
+#include "EvalCache.h"
 #include <functional>
 #include <valarray>
 
