@@ -368,7 +368,7 @@ SearchResult NegaScout(Position& position, unsigned int initialDepth, int depthR
 			if (IsPV(beta, alpha))
 				reduction--;
 
-			reduction = std::max(0, reduction);
+			reduction = std::max(1, reduction);
 
 			int score = -NegaScout(position, initialDepth, extendedDepth - 1 - reduction, -a - 1, -a, -colour, distanceFromRoot + 1, true, locals, sharedData).GetScore();
 
