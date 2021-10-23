@@ -15,13 +15,14 @@
 #include "Move.h"
 #include "MoveGeneration.h"
 #include "MoveList.h"
-#include "Network.h"
 #include "Position.h"
 #include "Pyrrhic/tbprobe.h"
 #include "Search.h"
 #include "SearchData.h"
 #include "TimeManage.h"
 #include "TranspositionTable.h"
+
+#include <fstream>
 
 using namespace ::std;
 
@@ -37,8 +38,6 @@ int main(int argc, char* argv[])
 {
     PrintVersion();
     tb_init("<empty>");
-
-    Network::Init();
 
     string Line; //to read the command given by the GUI
 

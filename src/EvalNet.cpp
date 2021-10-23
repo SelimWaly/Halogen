@@ -7,6 +7,7 @@
 #include "Position.h"
 
 void TempoAdjustment(int& eval, const Position& position);
+int Eval(const Position& position);
 
 int EvaluatePositionNet(const Position& position, EvalCacheTable& evalTable)
 {
@@ -14,7 +15,7 @@ int EvaluatePositionNet(const Position& position, EvalCacheTable& evalTable)
 
     if (!evalTable.GetEntry(position.GetZobristKey(), eval))
     {
-        eval = position.GetEvaluation();
+        eval = Eval(position);
 
         TempoAdjustment(eval, position);
 
@@ -71,3 +72,104 @@ void TempoAdjustment(int& eval, const Position& position)
     constexpr static int TEMPO = 10;
     eval += position.GetTurn() == WHITE ? TEMPO : -TEMPO;
 }
+
+constexpr std::array PieceValues = { 100, 300, 300, 500, 900 };
+
+constexpr std::array<std::array<int, N_SQUARES>, N_PIECE_TYPES> PSQT = {
+std::array{
+ 0,  0,  0,  0,  0,  0,  0,  0,
+50, 50, 50, 50, 50, 50, 50, 50,
+10, 10, 20, 30, 30, 20, 10, 10,
+ 5,  5, 10, 25, 25, 10,  5,  5,
+ 0,  0,  0, 20, 20,  0,  0,  0,
+ 5, -5,-10,  0,  0,-10, -5,  5,
+ 5, 10, 10,-20,-20, 10, 10,  5,
+ 0,  0,  0,  0,  0,  0,  0,  0
+},
+std::array{
+-50,-40,-30,-30,-30,-30,-40,-50,
+-40,-20,  0,  0,  0,  0,-20,-40,
+-30,  0, 10, 15, 15, 10,  0,-30,
+-30,  5, 15, 20, 20, 15,  5,-30,
+-30,  0, 15, 20, 20, 15,  0,-30,
+-30,  5, 10, 15, 15, 10,  5,-30,
+-40,-20,  0,  5,  5,  0,-20,-40,
+-50,-40,-30,-30,-30,-30,-40,-50,
+},
+std::array{
+-20,-10,-10,-10,-10,-10,-10,-20,
+-10,  0,  0,  0,  0,  0,  0,-10,
+-10,  0,  5, 10, 10,  5,  0,-10,
+-10,  5,  5, 10, 10,  5,  5,-10,
+-10,  0, 10, 10, 10, 10,  0,-10,
+-10, 10, 10, 10, 10, 10, 10,-10,
+-10,  5,  0,  0,  0,  0,  5,-10,
+-20,-10,-10,-10,-10,-10,-10,-20,
+},
+std::array{
+  0,  0,  0,  0,  0,  0,  0,  0,
+  5, 10, 10, 10, 10, 10, 10,  5,
+ -5,  0,  0,  0,  0,  0,  0, -5,
+ -5,  0,  0,  0,  0,  0,  0, -5,
+ -5,  0,  0,  0,  0,  0,  0, -5,
+ -5,  0,  0,  0,  0,  0,  0, -5,
+ -5,  0,  0,  0,  0,  0,  0, -5,
+  0,  0,  0,  5,  5,  0,  0,  0
+},
+std::array{
+-20,-10,-10, -5, -5,-10,-10,-20,
+-10,  0,  0,  0,  0,  0,  0,-10,
+-10,  0,  5,  5,  5,  5,  0,-10,
+ -5,  0,  5,  5,  5,  5,  0, -5,
+  0,  0,  5,  5,  5,  5,  0, -5,
+-10,  5,  5,  5,  5,  5,  0,-10,
+-10,  0,  5,  0,  0,  0,  0,-10,
+-20,-10,-10, -5, -5,-10,-10,-20
+},
+std::array{
+-30,-40,-40,-50,-50,-40,-40,-30,
+-30,-40,-40,-50,-50,-40,-40,-30,
+-30,-40,-40,-50,-50,-40,-40,-30,
+-30,-40,-40,-50,-50,-40,-40,-30,
+-20,-30,-30,-40,-40,-30,-30,-20,
+-10,-20,-20,-20,-20,-20,-20,-10,
+ 20, 20,  0,  0,  0,  0, 20, 20,
+ 20, 30, 10,  0,  0, 10, 30, 20
+},
+};
+
+int Eval(const Position& position)
+{
+    int Material = 0;
+    int PieceTables = 0;
+
+    for (int i = PAWN; i <= QUEEN; i++)
+    {
+        auto piece = static_cast<PieceTypes>(i);
+        Material += PieceValues[i] * (GetBitCount(position.GetPieceBB(piece, WHITE)) - GetBitCount(position.GetPieceBB(piece, BLACK)));
+    }
+
+    for (int i = PAWN; i <= KING; i++)
+    {
+        auto piece = static_cast<PieceTypes>(i);
+        uint64_t white = position.GetPieceBB(piece, WHITE);
+        uint64_t black = position.GetPieceBB(piece, BLACK);
+
+        while (white)
+        {
+            auto sq = LSBpop(white);
+            sq = GetPosition(GetFile(sq), RANK_8 - GetRank(sq)); //mirror vertically
+            PieceTables += PSQT[piece][sq];
+        }
+
+        while (black)
+        {
+            auto sq = LSBpop(black);
+            PieceTables -= PSQT[piece][sq];
+        }
+    }
+
+    return Material + PieceTables;
+}
+
+

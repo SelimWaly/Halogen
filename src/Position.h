@@ -9,7 +9,6 @@
 #include "BitBoardDefine.h"
 #include "BoardParameters.h"
 #include "Move.h"
-#include "Network.h"
 #include "Zobrist.h"
 
 constexpr size_t NodeCountChunk = 1 << 12;
@@ -46,8 +45,6 @@ public:
     void ApplyMoveQuick(Move move); //does ApplyMove functionality but much quicker.
     void RevertMoveQuick(); //does RevertMove functionality but much quicker.
 
-    int16_t GetEvaluation() const;
-
     bool CheckForRep(int distanceFromRoot, int maxReps) const;
 
     Move GetPreviousMove() const;
@@ -59,6 +56,5 @@ private:
     void SetSquareAndUpdate(Square square, Pieces piece);
     void ClearSquareAndUpdate(Square square);
 
-    Network net;
     std::vector<Move> moveStack;
 };
