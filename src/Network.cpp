@@ -1,7 +1,7 @@
 #include "Network.h"
 #include "incbin/incbin.h"
 
-INCBIN(Net, "4526ac9f.nn");
+INCBIN(Net, "a256853b.nn");
 
 std::array<std::array<int16_t, HIDDEN_NEURONS>, INPUT_NEURONS> Network::hiddenWeights = {};
 std::array<int16_t, HIDDEN_NEURONS> Network::hiddenBias = {};
@@ -50,6 +50,8 @@ void Network::Init()
     //Swap the first half with last half to swap white and black inputs
     //Because Andrew's trainer goes WHITE, BLACK but Halogen goes BLACK, WHITE
     std::rotate(hiddenWeights.begin(), hiddenWeights.begin() + hiddenWeights.size() / 2, hiddenWeights.end());
+
+    assert(reinterpret_cast<const unsigned char*>(Data) - gNetData == gNetSize);
 }
 
 void Network::RecalculateIncremental(const std::array<int16_t, INPUT_NEURONS>& inputs)
