@@ -46,6 +46,9 @@ public:
     void AddCounterMove(const Position& position, Move move, int change);
     int16_t GetCounterMove(const Position& position, Move move) const;
 
+    void AddFollowMove(const Position& position, Move move, int change);
+    int16_t GetFollowMove(const Position& position, Move move) const;
+
 private:
     void AddHistory(int16_t& val, int change);
 
@@ -57,6 +60,7 @@ private:
 
     std::unique_ptr<ButterflyType> butterfly = std::make_unique<ButterflyType>();
     std::unique_ptr<CounterMoveType> counterMove = std::make_unique<CounterMoveType>();
+    std::unique_ptr<CounterMoveType> followMove = std::make_unique<CounterMoveType>();
 };
 
 struct SearchData

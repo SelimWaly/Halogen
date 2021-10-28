@@ -184,6 +184,7 @@ void Position::ApplyNullMove()
     PreviousKeys.push_back(key);
     moveStack.push_back(Move::Uninitialized);
     SaveParameters();
+    SaveBoard(); // follow move history requires this
     SetEnPassant(N_SQUARES);
     SetCaptureSquare(N_SQUARES);
     SetCapturePiece(N_PIECES);
@@ -203,6 +204,7 @@ void Position::RevertNullMove()
 {
     assert(PreviousKeys.size() > 0);
 
+    RestorePreviousBoard();
     RestorePreviousParameters();
     key = PreviousKeys.back();
     PreviousKeys.pop_back();
@@ -478,10 +480,10 @@ bool Position::CheckForRep(int distanceFromRoot, int maxReps) const
     return false;
 }
 
-Move Position::GetPreviousMove() const
+Move Position::GetNthPreviousMove(size_t n) const
 {
-    if (moveStack.size())
-        return moveStack.back();
+    if (moveStack.size() >= n)
+        return moveStack[moveStack.size() - n];
     else
         return Move::Uninitialized;
 }

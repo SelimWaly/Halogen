@@ -3,6 +3,17 @@
 
 BitBoard::~BitBoard() = default;
 
+Pieces GetSquare(const BitBoardData& data, Square square)
+{
+    for (int i = 0; i < N_PIECES; i++)
+    {
+        if ((data[i] & SquareBB[square]) != 0)
+            return static_cast<Pieces>(i);
+    }
+
+    return N_PIECES;
+}
+
 void BitBoard::ResetBoard()
 {
     previousBoards = { BitBoardData() };
@@ -171,4 +182,11 @@ uint64_t BitBoard::GetWhitePieces() const
 uint64_t BitBoard::GetBlackPieces() const
 {
     return BlackPieces;
+}
+
+const BitBoardData& BitBoard::GetNthPreviousBoard(size_t n) const
+{
+    // top board of stack is the current, so minus one
+    assert(previousBoards.size() > n);
+    return previousBoards[previousBoards.size() - n - 1];
 }

@@ -120,6 +120,7 @@ void MoveGenerator::AdjustHistory(const Move& move, SearchData& Locals, int dept
 {
     Locals.history.AddButterfly(position, move, depthRemaining * depthRemaining);
     Locals.history.AddCounterMove(position, move, depthRemaining * depthRemaining);
+    Locals.history.AddFollowMove(position, move, depthRemaining * depthRemaining);
 
     for (auto const& m : quietMoves)
     {
@@ -127,6 +128,7 @@ void MoveGenerator::AdjustHistory(const Move& move, SearchData& Locals, int dept
             break;
         Locals.history.AddButterfly(position, m.move, -depthRemaining * depthRemaining);
         Locals.history.AddCounterMove(position, m.move, -depthRemaining * depthRemaining);
+        Locals.history.AddFollowMove(position, m.move, -depthRemaining * depthRemaining);
     }
 }
 
@@ -285,7 +287,7 @@ void MoveGenerator::OrderMoves(ExtendedMoveList& moves)
         //Quiet
         else
         {
-            int history = locals.history.GetButterfly(position, moves[i].move) + locals.history.GetCounterMove(position, moves[i].move);
+            int history = locals.history.GetButterfly(position, moves[i].move) + locals.history.GetCounterMove(position, moves[i].move) + locals.history.GetFollowMove(position, moves[i].move);
             moves[i].score = std::clamp<int>(history, std::numeric_limits<decltype(moves[i].score)>::min(), std::numeric_limits<decltype(moves[i].score)>::max());
         }
     }

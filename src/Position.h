@@ -44,7 +44,7 @@ public:
 
     bool CheckForRep(int distanceFromRoot, int maxReps) const;
 
-    Move GetPreviousMove() const;
+    Move GetNthPreviousMove(size_t n) const;
 
 private:
     uint64_t key = EMPTY;

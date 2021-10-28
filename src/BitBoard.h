@@ -4,6 +4,9 @@
 
 using BitBoardData = std::array<uint64_t, N_PIECES>;
 
+// stand-alone functions that are needed
+Pieces GetSquare(const BitBoardData& data, Square square);
+
 class BitBoard
 {
 public:
@@ -36,6 +39,8 @@ public:
 
     void SetSquare(Square square, Pieces piece);
     void ClearSquare(Square square);
+
+    const BitBoardData& GetNthPreviousBoard(size_t n) const;
 
 protected:
     void ResetBoard();
