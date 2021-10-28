@@ -66,7 +66,7 @@ private:
     std::unique_ptr<CounterMoveType> counterMove = std::make_unique<CounterMoveType>();
 };
 
-inline int History::Butterfly_max = 16384;
+inline int History::Butterfly_max = 8192;
 inline int History::Butterfly_scale = 32;
 
 inline int History::CounterMove_max = 16384;
