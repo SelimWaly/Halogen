@@ -373,3 +373,83 @@ void Position::ClearSquareAndUpdate(Square square)
     zobrist.TogglePieceSquare(piece, square);
     ClearSquare(square);
 }
+
+std::string Position::ConvertToFen() const
+{
+    std::string fen;
+
+    for (int rank = RANK_8; rank >= RANK_1; rank--)
+    {
+        int emptySpaces = 0;
+
+        for (int file = FILE_A; file <= FILE_H; file++)
+        {
+            char letter = PieceToChar(GetSquare(GetPosition(static_cast<File>(file), static_cast<Rank>(rank))));
+
+            if (letter == ' ')
+            {
+                emptySpaces++;
+            }
+            else if (emptySpaces != 0)
+            {
+                fen += std::to_string(emptySpaces);
+                fen += letter;
+                emptySpaces = 0;
+            }
+            else
+            {
+                fen += letter;
+            }
+        }
+
+        if (emptySpaces != 0)
+        {
+            fen += std::to_string(emptySpaces);
+        }
+
+        if (rank != RANK_1)
+            fen += '/';
+    }
+
+    fen += ' ';
+
+    if (GetTurn() == WHITE)
+        fen += 'w';
+    else
+        fen += 'b';
+
+    std::string castelingRights;
+
+    if (GetCanCastleWhiteKingside())
+        castelingRights += 'K';
+    if (GetCanCastleWhiteQueenside())
+        castelingRights += 'Q';
+    if (GetCanCastleBlackKingside())
+        castelingRights += 'k';
+    if (GetCanCastleBlackQueenside())
+        castelingRights += 'q';
+
+    if (castelingRights == "")
+        castelingRights = "-";
+
+    fen += ' ';
+    fen += castelingRights;
+
+    fen += ' ';
+
+    if (GetEnPassant() == N_SQUARES)
+        fen += '-';
+    else
+    {
+        fen += GetFile(GetEnPassant()) + 'a';
+        fen += GetRank(GetEnPassant()) + '1';
+    }
+
+    fen += ' ';
+    fen += std::to_string(GetFiftyMoveCount());
+
+    fen += ' ';
+    fen += std::to_string(GetTurnCount());
+
+    return fen;
+}

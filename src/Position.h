@@ -46,6 +46,8 @@ public:
 
     Move GetPreviousMove() const;
 
+    std::string ConvertToFen() const;
+
 private:
     Zobrist zobrist;
     std::vector<Zobrist> PreviousKeys;

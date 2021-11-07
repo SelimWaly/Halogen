@@ -14,7 +14,7 @@ string version = "10.21";
 
 int main(int argc, char* argv[])
 {
-    PrintVersion();
+    //PrintVersion();
     tb_init("<empty>");
 
     Network::Init();
@@ -371,6 +371,44 @@ int main(int argc, char* argv[])
                 Bench(stoi(token));
             else
                 Bench();
+        }
+
+        else if (token == "print_fen")
+        {
+            std::cout << position.ConvertToFen() << std::endl;
+        }
+
+        else if (token == "generate_random_book")
+        {
+            BasicMoveList moves;
+
+            std::random_device rd;
+            std::mt19937 gen(rd());
+            std::normal_distribution<> openingLength(10, 2);
+
+            for (int i = 0; i < 10000000; i++)
+            {
+                position.StartingPosition();
+                int totalMoves = std::clamp<int>(std::round(openingLength(gen)), 6, 14);
+
+                for (int j = 0; j < totalMoves; j++)
+                {
+                    moves.clear();
+                    LegalMoves(position, moves);
+                    if (moves.size() == 0)
+                        continue;
+
+                    std::uniform_int_distribution<> distrib(0, moves.size() - 1);
+                    position.ApplyMove(moves[distrib(gen)]);
+                }
+
+                moves.clear();
+                LegalMoves(position, moves);
+                if (moves.size() == 0)
+                    continue;
+
+                std::cout << position.ConvertToFen() << "\n";
+            }
         }
 
         //Non uci commands
