@@ -396,7 +396,7 @@ int main(int argc, char* argv[])
                     moves.clear();
                     LegalMoves(position, moves);
                     if (moves.size() == 0)
-                        continue;
+                        break;
 
                     std::uniform_int_distribution<> distrib(0, moves.size() - 1);
                     position.ApplyMove(moves[distrib(gen)]);
