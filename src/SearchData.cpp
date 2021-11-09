@@ -24,7 +24,7 @@ void SearchData::ResetNewSearch()
     PvTable = {};
 
     // shift killers forward by two assuming me and my opponent have both played a move
-    std::move(KillerMoves.begin(), KillerMoves.end() - 2, KillerMoves.begin() + 2);
+    std::copy_backward(KillerMoves.begin(), KillerMoves.end() - 2, KillerMoves.begin() + 2);
     KillerMoves[0] = {};
     KillerMoves[1] = {};
 }
