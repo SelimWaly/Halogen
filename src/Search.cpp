@@ -51,8 +51,6 @@ uint64_t SearchThread(Position position, ThreadSharedData& sharedData)
         }
     }
 
-    sharedData.ResetNewSearch();
-
     //Limit the MultiPV setting to be at most the number of legal moves
     BasicMoveList moves;
     moves.clear();

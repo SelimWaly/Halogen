@@ -172,6 +172,7 @@ int main(int argc, char* argv[])
                 searchThread.join();
 
             data.SetLimits(limits);
+            data.ResetNewSearch();
             searchThread = thread([position, &data] { SearchThread(position, data); });
         }
 
