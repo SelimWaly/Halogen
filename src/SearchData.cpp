@@ -22,13 +22,13 @@ void SearchData::ResetNewSearch()
     threadWantsToStop = false;
 
     PvTable = {};
-    KillerMoves = {};
 }
 
 void SearchData::ResetNewGame()
 {
     ResetNewSearch();
     history.Reset();
+    KillerMoves = {};
 }
 
 ThreadSharedData::ThreadSharedData(const SearchLimits& limits, const SearchParameters& parameters)
