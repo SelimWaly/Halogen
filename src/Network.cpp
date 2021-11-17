@@ -17,19 +17,25 @@ std::array<float, OUTPUT_NEURONS> Network::out_bias;
 std::array<std::array<float, OUTPUT_NEURONS>, L3_NEURONS> Network::out_weight;
 
 template <typename T, size_t SIZE>
-void AddTo(std::array<T, SIZE>& a, const std::array<T, SIZE>& b)
+void AddToUs(std::array<T, SIZE * 2>& a, const std::array<T, SIZE>& b)
 {
     for (size_t i = 0; i < SIZE; i++)
         a[i] += b[i];
 }
 
 template <typename T, size_t SIZE>
-std::array<T, SIZE * 2> Merge(const std::array<T, SIZE>& a, const std::array<T, SIZE>& b)
+void AddToThem(std::array<T, SIZE * 2>& a, const std::array<T, SIZE>& b)
 {
-    std::array<T, SIZE * 2> ret;
-    std::copy(a.begin(), a.begin() + SIZE, ret.begin());
-    std::copy(b.begin(), b.begin() + SIZE, ret.begin() + SIZE);
-    return ret;
+    for (size_t i = 0; i < SIZE; i++)
+        a[i + SIZE] += b[i];
+}
+
+template <typename T, size_t SIZE_A, size_t SIZE_B>
+void MultiplyVectorByMatrix(const std::array<T, SIZE_A>& vec, const std::array<std::array<T, SIZE_B>, SIZE_A>& matrix, std::array<T, SIZE_B>& output)
+{
+    for (size_t i = 0; i < SIZE_A; i++)
+        for (size_t j = 0; j < SIZE_B; j++)
+            output[j] += vec[i] * matrix[i][j];
 }
 
 template <typename T, size_t SIZE>
@@ -110,8 +116,9 @@ WDL Network::EvalWDL(const Position& position) const
 {
     //------------------
 
-    std::array<float, HALF_L1> accumulatorUs = l1_bias;
-    std::array<float, HALF_L1> accumulatorThem = l1_bias;
+    std::array<float, L1_NEURONS> l1 = {};
+    AddToUs(l1, l1_bias);
+    AddToThem(l1, l1_bias);
 
     Players stm = position.GetTurn();
 
@@ -128,41 +135,31 @@ WDL Network::EvalWDL(const Position& position) const
         size_t inputUs = (64 * 10 * ourKing) + (64 * (5 * (ColourOfPiece(piece) == stm) + GetPieceType(piece))) + RelativeSquare(stm, sq);
         size_t inputThem = (64 * 10 * theirKing) + (64 * (5 * (ColourOfPiece(piece) != stm) + GetPieceType(piece))) + RelativeSquare(!stm, sq);
 
-        AddTo(accumulatorUs, l1_weight[inputUs]);
-        AddTo(accumulatorThem, l1_weight[inputThem]);
+        AddToUs(l1, l1_weight[inputUs]);
+        AddToThem(l1, l1_weight[inputThem]);
     }
 
-    std::array<float, L1_NEURONS> l1 = Merge(accumulatorUs, accumulatorThem);
     ReLU(l1);
 
     //------------------
 
     std::array<float, L2_NEURONS> l2 = l2_bias;
 
-    for (size_t i = 0; i < L1_NEURONS; i++)
-        for (size_t j = 0; j < L2_NEURONS; j++)
-            l2[j] += l1[i] * l2_weight[i][j];
-
+    MultiplyVectorByMatrix(l1, l2_weight, l2);
     ReLU(l2);
 
     //------------------
 
     std::array<float, L3_NEURONS> l3 = l3_bias;
 
-    for (size_t i = 0; i < L2_NEURONS; i++)
-        for (size_t j = 0; j < L3_NEURONS; j++)
-            l3[j] += l2[i] * l3_weight[i][j];
-
+    MultiplyVectorByMatrix(l2, l3_weight, l3);
     ReLU(l3);
 
     //------------------
 
     std::array<float, OUTPUT_NEURONS> output = out_bias;
 
-    for (size_t i = 0; i < L3_NEURONS; i++)
-        for (size_t j = 0; j < OUTPUT_NEURONS; j++)
-            output[j] += l3[i] * out_weight[i][j];
-
+    MultiplyVectorByMatrix(l3, out_weight, output);
     Softmax(output);
 
     //------------------
