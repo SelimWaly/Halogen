@@ -1,6 +1,7 @@
 #include "Benchmark.h"
 #include "Search.h"
 #include "Zobrist.h"
+#include <fstream>
 
 using namespace ::std;
 

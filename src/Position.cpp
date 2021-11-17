@@ -12,7 +12,6 @@ void Position::ApplyMove(Move move)
 {
     PreviousKeys.push_back(zobrist);
     moveStack.push_back(move);
-    net.AccumulatorPush();
     SaveParameters();
     SaveBoard();
 
@@ -27,7 +26,6 @@ void Position::ApplyMove(Move move)
 
     if (move.IsCapture() && move.GetFlag() != EN_PASSANT)
     {
-        net.RemoveInput(move.GetTo(), GetSquare(move.GetTo()));
         zobrist.TogglePieceSquare(GetSquare(move.GetTo()), move.GetTo());
     }
 
@@ -158,7 +156,6 @@ void Position::ApplyMove(const std::string& strmove)
     }
 
     ApplyMove(Move(prev, next, flag));
-    net.Recalculate(*this);
 }
 
 void Position::RevertMove()
@@ -169,7 +166,6 @@ void Position::RevertMove()
     RestorePreviousParameters();
     zobrist = PreviousKeys.back();
     PreviousKeys.pop_back();
-    net.AccumulatorPop();
     moveStack.pop_back();
 }
 
@@ -253,7 +249,6 @@ bool Position::InitialiseFromFen(std::vector<std::string> fen)
         return false;
 
     zobrist.Recalculate(*this);
-    net.Recalculate(*this);
 
     return true;
 }
@@ -325,7 +320,7 @@ void Position::RevertMoveQuick()
 
 int16_t Position::GetEvaluation() const
 {
-    return net.Eval();
+    return net.Eval(*this);
 }
 
 bool Position::CheckForRep(int distanceFromRoot, int maxReps) const
@@ -361,7 +356,6 @@ Move Position::GetPreviousMove() const
 
 void Position::SetSquareAndUpdate(Square square, Pieces piece)
 {
-    net.AddInput(square, piece);
     zobrist.TogglePieceSquare(piece, square);
     SetSquare(square, piece);
 }
@@ -369,7 +363,6 @@ void Position::SetSquareAndUpdate(Square square, Pieces piece)
 void Position::ClearSquareAndUpdate(Square square)
 {
     Pieces piece = GetSquare(square);
-    net.RemoveInput(square, piece);
     zobrist.TogglePieceSquare(piece, square);
     ClearSquare(square);
 }
