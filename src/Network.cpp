@@ -2,7 +2,7 @@
 #include "Position.h"
 #include "incbin/incbin.h"
 
-INCBIN(Net, "4526ac9f.nn");
+INCBIN(Net, "epoch10.nn");
 
 std::array<std::array<int16_t, HIDDEN_NEURONS>, INPUT_NEURONS> Network::hiddenWeights = {};
 std::array<int16_t, HIDDEN_NEURONS> Network::hiddenBias = {};
