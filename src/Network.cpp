@@ -45,24 +45,6 @@ void ReLU(std::array<T, SIZE>& source)
         source[i] = std::max(T(0), source[i]);
 }
 
-template <typename T, size_t SIZE>
-void Softmax(std::array<T, SIZE>& source)
-{
-    // Get the max output
-    T largest = *std::max_element(source.begin(), source.end());
-
-    // Calculate exp(x - largest)
-    std::transform(source.begin(), source.end(), source.begin(), [largest](T& x)
-        { return std::exp(x - largest); });
-
-    // Calculate sum
-    T sum = std::accumulate(source.begin(), source.end(), T(0));
-
-    // The softmax is exp(x - max(x)) / sum
-    std::transform(source.begin(), source.end(), source.begin(), [sum](T& x)
-        { return x / sum; });
-}
-
 void Network::Init()
 {
     auto data = reinterpret_cast<const float*>(gNetData);
@@ -112,7 +94,7 @@ Square RelativeSquare(Players colour, Square sq)
     return GetPosition(GetFile(sq), RelativeRank(colour, sq));
 }
 
-WDL Network::EvalWDL(const Position& position) const
+int16_t Network::Eval(const Position& position) const
 {
     //------------------
 
@@ -160,36 +142,11 @@ WDL Network::EvalWDL(const Position& position) const
     std::array<float, OUTPUT_NEURONS> output = out_bias;
 
     MultiplyVectorByMatrix(l3, out_weight, output);
-    Softmax(output);
 
     //------------------
 
     if (position.GetTurn() == WHITE)
-        return { output[0], output[1], output[2] };
+        return std::round(output[0]);
     else
-        return { output[2], output[1], output[0] };
-}
-
-int16_t Network::Eval(const Position& position) const
-{
-    auto score = EvalWDL(position);
-    return static_cast<int16_t>(std::round(score.ToCP()));
-}
-
-float WDL::ToCP()
-{
-    /*
-    First we calculate the 'expected' score as W + 0.5D
-    Then we calculate the logit of this score, aka an inverse sigmoid.
-    The answer is then scaled by 150 times which was empirically adjusted
-    to maximize elo
-    */
-
-    constexpr static float epsilon = 1e-8;
-    constexpr static float scale = 300;
-
-    float expectation = std::clamp(win + 0.5f * draw, epsilon, 1 - epsilon);
-    float eval = std::log(expectation / (1 - expectation));
-
-    return scale * eval;
+        return -std::round(output[0]);
 }
