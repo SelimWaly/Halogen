@@ -1,4 +1,5 @@
 #include "SearchData.h"
+#include <algorithm>
 
 TranspositionTable tTable;
 
@@ -22,12 +23,15 @@ void SearchData::ResetNewSearch()
     threadWantsToStop = false;
 
     PvTable = {};
-    KillerMoves = {};
+
+    // shift killers forward by two assuming me and my opponent have both played a move
+    std::rotate(KillerMoves.begin(), KillerMoves.begin() + 2, KillerMoves.end());
 }
 
 void SearchData::ResetNewGame()
 {
     ResetNewSearch();
+    KillerMoves = {};
     history.Reset();
 }
 
