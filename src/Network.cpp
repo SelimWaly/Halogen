@@ -8,17 +8,17 @@
 #include "Position.h"
 #include "incbin/incbin.h"
 
-INCBIN(Net, "4526ac9f.nn");
+INCBIN(Net, "46.nn");
 
 std::array<std::array<int16_t, HIDDEN_NEURONS>, INPUT_NEURONS> Network::hiddenWeights = {};
 std::array<int16_t, HIDDEN_NEURONS> Network::hiddenBias = {};
 std::array<int16_t, HIDDEN_NEURONS> Network::outputWeights = {};
 int16_t Network::outputBias = {};
 
-constexpr int16_t MAX_VALUE = 128;
+constexpr int16_t MAX_VALUE = 256;
 constexpr int16_t PRECISION = ((size_t)std::numeric_limits<int16_t>::max() + 1) / MAX_VALUE;
 constexpr int32_t SQUARE_PRECISION = (int32_t)PRECISION * PRECISION;
-constexpr double SCALE_FACTOR = 0.94; //Found empirically to maximize elo
+constexpr double SCALE_FACTOR = 1; // Found empirically to maximize elo
 
 template <typename T, size_t SIZE>
 [[nodiscard]] std::array<T, SIZE> ReLU(const std::array<T, SIZE>& source)
@@ -40,23 +40,20 @@ void DotProduct(const std::array<T_in, SIZE>& a, const std::array<T_in, SIZE>& b
 
 void Network::Init()
 {
-    auto Data = reinterpret_cast<const float*>(gNetData);
-
-    for (size_t i = 0; i < HIDDEN_NEURONS; i++)
-        hiddenBias[i] = (int16_t)round(*Data++ * PRECISION);
+    // Koi nets must skip 8 bytes
+    auto Data = reinterpret_cast<const float*>(gNetData + 8);
 
     for (size_t i = 0; i < INPUT_NEURONS; i++)
         for (size_t j = 0; j < HIDDEN_NEURONS; j++)
             hiddenWeights[i][j] = (int16_t)round(*Data++ * PRECISION);
 
-    outputBias = (int16_t)round(*Data++ * SCALE_FACTOR * PRECISION);
+    for (size_t i = 0; i < HIDDEN_NEURONS; i++)
+        hiddenBias[i] = (int16_t)round(*Data++ * PRECISION);
 
     for (size_t i = 0; i < HIDDEN_NEURONS; i++)
         outputWeights[i] = (int16_t)round(*Data++ * SCALE_FACTOR * PRECISION);
 
-    //Swap the first half with last half to swap white and black inputs
-    //Because Andrew's trainer goes WHITE, BLACK but Halogen goes BLACK, WHITE
-    std::rotate(hiddenWeights.begin(), hiddenWeights.begin() + hiddenWeights.size() / 2, hiddenWeights.end());
+    outputBias = (int16_t)round(*Data++ * SCALE_FACTOR * PRECISION);
 }
 
 void Network::Recalculate(const Position& position)
