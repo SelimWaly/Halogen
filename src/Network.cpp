@@ -15,9 +15,8 @@ std::array<int16_t, HIDDEN_NEURONS> Network::hiddenBias = {};
 std::array<int16_t, HIDDEN_NEURONS> Network::outputWeights = {};
 int16_t Network::outputBias = {};
 
-constexpr int16_t MAX_VALUE = 256;
-constexpr int16_t PRECISION = ((size_t)std::numeric_limits<int16_t>::max() + 1) / MAX_VALUE;
-constexpr int32_t SQUARE_PRECISION = (int32_t)PRECISION * PRECISION;
+constexpr int16_t L1_SCALE = 64;
+constexpr int16_t L2_SCALE = 256;
 constexpr double SCALE_FACTOR = 1; // Found empirically to maximize elo
 
 template <typename T, size_t SIZE>
@@ -45,15 +44,15 @@ void Network::Init()
 
     for (size_t i = 0; i < INPUT_NEURONS; i++)
         for (size_t j = 0; j < HIDDEN_NEURONS; j++)
-            hiddenWeights[i][j] = (int16_t)round(*Data++ * PRECISION);
+            hiddenWeights[i][j] = (int16_t)round(*Data++ * L1_SCALE);
 
     for (size_t i = 0; i < HIDDEN_NEURONS; i++)
-        hiddenBias[i] = (int16_t)round(*Data++ * PRECISION);
+        hiddenBias[i] = (int16_t)round(*Data++ * L1_SCALE);
 
     for (size_t i = 0; i < HIDDEN_NEURONS; i++)
-        outputWeights[i] = (int16_t)round(*Data++ * SCALE_FACTOR * PRECISION);
+        outputWeights[i] = (int16_t)round(*Data++ * SCALE_FACTOR * L2_SCALE);
 
-    outputBias = (int16_t)round(*Data++ * SCALE_FACTOR * PRECISION);
+    outputBias = (int16_t)round(*Data++ * SCALE_FACTOR * L2_SCALE);
 }
 
 void Network::Recalculate(const Position& position)
@@ -101,9 +100,9 @@ void Network::RemoveInput(Square square, Pieces piece)
 
 int16_t Network::Eval() const
 {
-    int32_t output = outputBias * PRECISION;
+    int32_t output = outputBias * L1_SCALE;
     DotProduct(ReLU(Zeta.back()), outputWeights, output);
-    return output / SQUARE_PRECISION;
+    return output / L1_SCALE / L2_SCALE;
 }
 
 /*void QuantizationAnalysis()
