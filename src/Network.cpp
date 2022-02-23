@@ -37,6 +37,10 @@ void DotProductHalves(const std::array<T_in, SIZE>& stm, const std::array<T_in, 
     for (size_t i = 0; i < SIZE; i++)
     {
         output += stm[i] * weights[i];
+    }
+
+    for (size_t i = 0; i < SIZE; i++)
+    {
         output += other[i] * weights[i + SIZE];
     }
 }
