@@ -9,15 +9,15 @@
 #include "Position.h"
 #include "incbin/incbin.h"
 
-INCBIN(Net, "46.nn");
+INCBIN(Net, "169.nn");
 
 std::array<std::array<int16_t, HIDDEN_NEURONS>, INPUT_NEURONS> Network::hiddenWeights = {};
 std::array<int16_t, HIDDEN_NEURONS> Network::hiddenBias = {};
 std::array<int16_t, HIDDEN_NEURONS* 2> Network::outputWeights = {};
 int16_t Network::outputBias = {};
 
-constexpr int16_t L1_SCALE = 64;
-constexpr int16_t L2_SCALE = 256;
+constexpr int16_t L1_SCALE = 128;
+constexpr int16_t L2_SCALE = 128;
 constexpr double SCALE_FACTOR = 1; // Found empirically to maximize elo
 
 template <typename T, size_t SIZE>
@@ -53,7 +53,7 @@ void Network::Init()
     for (size_t i = 0; i < HIDDEN_NEURONS; i++)
         hiddenBias[i] = (int16_t)round(*Data++ * L1_SCALE);
 
-    for (size_t i = 0; i < HIDDEN_NEURONS; i++)
+    for (size_t i = 0; i < HIDDEN_NEURONS * 2; i++)
         outputWeights[i] = (int16_t)round(*Data++ * SCALE_FACTOR * L2_SCALE);
 
     outputBias = (int16_t)round(*Data++ * SCALE_FACTOR * L2_SCALE);
@@ -128,5 +128,9 @@ int16_t Network::Eval(Players stm) const
 {
     int32_t output = outputBias * L1_SCALE;
     DotProductHalves(ReLU(AccumulatorStack.back().side[stm]), ReLU(AccumulatorStack.back().side[!stm]), outputWeights, output);
-    return output / L1_SCALE / L2_SCALE;
+    output /= L1_SCALE * L2_SCALE;
+
+    // 'half' or 'relative' nets return a score relative to the side to move
+    // but Halogen expects a score relative to white
+    return stm == WHITE ? output : -output;
 }
