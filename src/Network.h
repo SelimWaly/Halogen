@@ -13,7 +13,7 @@ class Position;
 
 struct HalfAccumulator
 {
-    std::array<std::array<int16_t, HIDDEN_NEURONS>, N_PIECES> side;
+    std::array<std::array<int16_t, HIDDEN_NEURONS>, N_PLAYERS> side;
 };
 
 class Network
