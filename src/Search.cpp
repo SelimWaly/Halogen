@@ -115,6 +115,8 @@ uint64_t SearchThread(Position position, ThreadSharedData& sharedData)
 
 void PrintBestMove(Move Best)
 {
+    return;
+
     std::cout << "bestmove ";
     Best.Print();
     std::cout << std::endl;

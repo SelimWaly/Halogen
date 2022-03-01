@@ -1,5 +1,5 @@
 CXX 	= g++
-SRC 	= *.cpp Pyrrhic/tbprobe.cpp
+SRC 	= *.cpp Pyrrhic/tbprobe.cpp td-leaf/*.cpp
 OUTPUT 	= ../../../$(EXE)$(VER)
 EXE 	= Halogen
 LIBS    = -Wl,--whole-archive -lpthread -Wl,--no-whole-archive -lm

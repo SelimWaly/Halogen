@@ -209,6 +209,8 @@ SearchData& ThreadSharedData::GetData(unsigned int threadID)
 
 void ThreadSharedData::PrintSearchInfo(unsigned int depth, double Time, bool isCheckmate, int score, int alpha, int beta, const Position& position, const SearchData& locals) const
 {
+    return;
+
     /*
 	Here we avoid excessive use of std::cout and instead append to a string in order
 	to output only once at the end. This causes a noticeable speedup for very fast
