@@ -16,7 +16,6 @@ SRCS := ./BitBoard.cpp \
 	Move.cpp \
 	MoveGeneration.cpp \
 	MoveList.cpp \
-	Network.cpp \
 	Position.cpp \
 	Search.cpp \
 	SearchData.cpp \
@@ -26,7 +25,10 @@ SRCS := ./BitBoard.cpp \
 	TranspositionTable.cpp \
 	TTEntry.cpp \
 	Zobrist.cpp \
-	Pyrrhic/tbprobe.cpp
+	Pyrrhic/tbprobe.cpp \
+	td-leaf/HalogenNetwork.cpp \
+	td-leaf/td-leaf-learn.cpp \
+	td-leaf/TrainableNetwork.cpp
 
 # String substitution for every C/C++ file.
 # As an example, hello.cpp turns into ./build/hello.cpp.o

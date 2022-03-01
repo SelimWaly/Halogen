@@ -9,8 +9,8 @@
 #include "BitBoardDefine.h"
 #include "BoardParameters.h"
 #include "Move.h"
-#include "Network.h"
 #include "Zobrist.h"
+#include "td-leaf/TrainableNetwork.h"
 
 constexpr size_t NodeCountChunk = 1 << 12;
 
@@ -59,6 +59,6 @@ private:
     void SetSquareAndUpdate(Square square, Pieces piece);
     void ClearSquareAndUpdate(Square square);
 
-    Network net;
+    HalogenNetwork net;
     std::vector<Move> moveStack;
 };
