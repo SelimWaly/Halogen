@@ -15,4 +15,15 @@ public:
 
 private:
     mutable std::mutex mutex;
+
+    constexpr static double beta_1 = 0.9;
+    constexpr static double beta_2 = 0.999;
+    constexpr static double alpha = 0.1;
+    constexpr static double epsilon = 10e-8;
+
+    static std::array<std::array<float, architecture[1]>, architecture[0]> l1_weight_m;
+    static std::array<float, architecture[1]> l1_bias_m;
+
+    static std::array<std::array<float, architecture[1]>, architecture[0]> l1_weight_v;
+    static std::array<float, architecture[1]> l1_bias_v;
 };

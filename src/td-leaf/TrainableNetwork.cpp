@@ -1,9 +1,16 @@
 #include "TrainableNetwork.h"
 #include "../Position.h"
+#include <cmath>
 #include <fstream>
 #include <iostream>
 #include <mutex>
 #include <random>
+
+std::array<std::array<float, architecture[1]>, architecture[0]> TrainableNetwork::l1_weight_m;
+std::array<float, architecture[1]> TrainableNetwork::l1_bias_m;
+
+std::array<std::array<float, architecture[1]>, architecture[0]> TrainableNetwork::l1_weight_v;
+std::array<float, architecture[1]> TrainableNetwork::l1_bias_v;
 
 std::vector<int> TrainableNetwork::GetSparseInputs(const Position& position) const
 {
@@ -62,11 +69,19 @@ void TrainableNetwork::Backpropagate(double loss_gradient, const std::vector<int
 {
     std::lock_guard<std::mutex> lock(mutex);
 
-    for (size_t i = 0; i < sparse_inputs.size(); i++)
+    for (size_t i = 0; i < l1_weight.size(); i++)
     {
-        l1_weight[sparse_inputs[i]][0] += loss_gradient;
+        double g = std::find(sparse_inputs.begin(), sparse_inputs.end(), i) != sparse_inputs.end() ? loss_gradient : 0;
+
+        l1_weight_m[i][0] = beta_1 * l1_weight_m[i][0] + (1 - beta_1) * g;
+        l1_weight_v[i][0] = beta_2 * l1_weight_v[i][0] + (1 - beta_2) * g * g;
+
+        l1_weight[i][0] += -alpha * l1_weight_m[i][0] / std::sqrt(l1_weight_v[i][0] + epsilon);
     }
-    l1_bias[0] += loss_gradient;
+    l1_bias_m[0] = beta_1 * l1_bias_m[0] + (1 - beta_1) * loss_gradient;
+    l1_bias_v[0] = beta_2 * l1_bias_v[0] + (1 - beta_2) * loss_gradient * loss_gradient;
+
+    l1_bias[0] += -alpha * l1_bias_m[0] / std::sqrt(l1_bias_v[0] + epsilon);
 }
 
 void TrainableNetwork::PrintNetworkDiagnostics() const
