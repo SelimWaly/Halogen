@@ -2,8 +2,10 @@
 #include <cmath>
 #include <iomanip>
 #include <iostream>
+#include <math.h>
 #include <random>
 #include <string>
+#include <thread>
 
 #include "../EvalNet.h"
 #include "../MoveGeneration.h"
@@ -16,22 +18,43 @@
 void SelfPlayGame(TrainableNetwork& network, ThreadSharedData& data);
 void PrintNetworkDiagnostics(TrainableNetwork& network);
 
-void learn()
-{
-    TrainableNetwork network;
-    network.InitializeWeightsRandomly();
+// hyperparameters
+constexpr double LAMBDA = 0.7; // credit discount factor
+constexpr double GAMMA = 1; // discount rate of future rewards
+constexpr double ALPHA = 160; // learning rate
 
+constexpr int training_depth = 4;
+constexpr double sigmoid_coeff = 2.5 / 400.0;
+// -----------------
+
+constexpr int max_threads = 11;
+
+std::atomic<int> game_count = 0;
+
+void learn_thread(TrainableNetwork& network)
+{
     SearchLimits limits;
-    limits.SetDepthLimit(4);
+    limits.SetDepthLimit(training_depth);
     ThreadSharedData data(std::move(limits));
 
+    while (true)
+    {
+        SelfPlayGame(network, data);
+        game_count++;
+    }
+}
+
+void info_thread(TrainableNetwork& network)
+{
     std::chrono::steady_clock::time_point last_print = std::chrono::steady_clock::now();
     std::chrono::steady_clock::time_point last_save = std::chrono::steady_clock::now();
     std::chrono::steady_clock::time_point start = std::chrono::steady_clock::now();
 
-    for (int games = 0; games < 10000000; games++)
+    while (true)
     {
-        SelfPlayGame(network, data);
+        // wake up once a second and print diagnostics if needed.
+        // by sleeping, we avoid spinning endlessly and contesting shared memory.
+        std::this_thread::sleep_for(std::chrono::seconds(1));
 
         std::chrono::steady_clock::time_point now = std::chrono::steady_clock::now();
 
@@ -39,10 +62,10 @@ void learn()
         {
             last_print = std::chrono::steady_clock::now();
 
-            std::cout << "Game " << games << std::endl;
-            PrintNetworkDiagnostics(network);
+            std::cout << "Game " << game_count << std::endl;
+            network.PrintNetworkDiagnostics();
             auto duration = std::chrono::duration<float>(now - start).count();
-            std::cout << "Games per second: " << games / duration << std::endl;
+            std::cout << "Games per second: " << game_count / duration << std::endl;
             std::cout << std::endl;
             std::cout << std::endl;
         }
@@ -51,48 +74,43 @@ void learn()
         {
             last_save = std::chrono::steady_clock::now();
 
-            network.SaveWeights("768-1_g" + std::to_string(games) + ".nn");
+            network.SaveWeights("768-1_g" + std::to_string(game_count) + ".nn");
         }
     }
 }
 
-void PrintNetworkDiagnostics(TrainableNetwork& network)
+void learn()
 {
-    for (int i = 0; i < N_PIECES; i++)
+    TrainableNetwork network;
+    network.InitializeWeightsRandomly();
+
+    std::vector<std::thread> threads;
+
+    threads.emplace_back(info_thread, std::ref(network));
+
+    // always have at least one learning and one info thread.
+    // at most we want max_threadsm total threads.
+    for (int i = 0; i < std::max(1, max_threads - 1); i++)
     {
-        float sum = 0;
-
-        for (int j = 0; j < N_SQUARES; j++)
-        {
-            sum += network.l1_weight[i * 64 + j][0];
-
-            std::cout << network.l1_weight[i * 64 + j][0] << " ";
-
-            if (j % N_FILES == N_FILES - 1)
-            {
-                std::cout << std::endl;
-            }
-        }
-
-        sum /= N_SQUARES;
-
-        std::cout << "piece " << i << ": " << sum << std::endl;
-        std::cout << std::endl;
+        threads.emplace_back(learn_thread, std::ref(network));
     }
 
-    std::cout << "bias: " << network.l1_bias[0] << std::endl;
+    for (auto& thread : threads)
+    {
+        thread.join();
+    }
 }
 
 float sigmoid(float x)
 {
-    return 1.0f / (1.0f + exp(2.5 / 400.0 * -x));
+    return 1.0f / (1.0f + exp(sigmoid_coeff * -x));
 }
 
 struct TD_game_result
 {
     float score;
     std::vector<int> sparseInputs = {};
-    float difference = 0; // between this and next
+    double delta = 0; // between this and next
 };
 
 void SelfPlayGame(TrainableNetwork& network, ThreadSharedData& data)
@@ -192,7 +210,7 @@ void SelfPlayGame(TrainableNetwork& network, ThreadSharedData& data)
 
     for (int i = 0; i < static_cast<int>(results.size()) - 1; i++)
     {
-        results[i].difference = results[i + 1].score - results[i].score;
+        results[i].delta = GAMMA * results[i + 1].score - results[i].score;
         // std::cout << "difference: " << results[i].difference << " scores: " << results[i].score << ", " << results[i + 1].score << std::endl;
     }
 
@@ -200,24 +218,18 @@ void SelfPlayGame(TrainableNetwork& network, ThreadSharedData& data)
 
     for (int t = 0; t < static_cast<int>(results.size()) - 1; t++)
     {
-        float discounted_td = 0;
+        double delta_sum = 0;
 
         for (int j = t; j < static_cast<int>(results.size()) - 1; j++)
         {
-            discounted_td += results[j].difference * pow(0.7f, j - t);
+            delta_sum += results[j].delta * pow(LAMBDA * GAMMA, j - t);
         }
 
-        // for simple case, all activated inputs make for a gradient of 1 so math is easy.
         // note derivative of sigmoid with coefficent k is k*(s)*(1-s)
-        discounted_td *= results[t].score * (1 - results[t].score) * 2.5 / 400.0;
+        double loss_gradient = delta_sum * results[t].score * (1 - results[t].score) * sigmoid_coeff;
+        loss_gradient *= ALPHA; // learning rate
 
-        discounted_td *= 160; // learning rate
-
-        for (size_t i = 0; i < results[t].sparseInputs.size(); i++)
-        {
-            network.l1_weight[results[t].sparseInputs[i]][0] += discounted_td;
-        }
-        network.l1_bias[0] += discounted_td;
+        network.Backpropagate(loss_gradient, results[t].sparseInputs);
     }
 
     // std::cout << "Game result: " << results.back().score << " turns: " << turns << std::endl;
