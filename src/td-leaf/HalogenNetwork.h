@@ -27,11 +27,11 @@ public:
     // do undo the last move
     void AccumulatorPop();
 
-    static std::array<std::array<float, architecture[1]>, architecture[0]> l1_weight;
-    static std::array<float, architecture[1]> l1_bias;
-
 protected:
     int index(Square square, Pieces piece) const;
+
+    static std::array<std::array<float, architecture[1]>, architecture[0]> l1_weight;
+    static std::array<float, architecture[1]> l1_bias;
 
 private:
     using Accumulator = std::array<float, architecture[1]>;
