@@ -21,7 +21,6 @@ void PrintNetworkDiagnostics(TrainableNetwork& network);
 // hyperparameters
 constexpr double LAMBDA = 0.7; // credit discount factor
 constexpr double GAMMA = 1; // discount rate of future rewards
-constexpr double ALPHA = 160; // learning rate
 
 constexpr int training_depth = 4;
 constexpr double sigmoid_coeff = 2.5 / 400.0;
@@ -226,9 +225,7 @@ void SelfPlayGame(TrainableNetwork& network, ThreadSharedData& data)
         }
 
         // note derivative of sigmoid with coefficent k is k*(s)*(1-s)
-        double loss_gradient = delta_sum * results[t].score * (1 - results[t].score) * sigmoid_coeff;
-        loss_gradient *= ALPHA; // learning rate
-
+        double loss_gradient = -delta_sum * results[t].score * (1 - results[t].score) * sigmoid_coeff;
         network.Backpropagate(loss_gradient, results[t].sparseInputs);
     }
 
