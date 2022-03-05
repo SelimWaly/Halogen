@@ -1,8 +1,9 @@
+#include <algorithm>
 #include <array>
 #include <cstdlib>
 
 template <typename OUT, typename IN, size_t SIZE>
-OUT dot_product(const std::array<IN, SIZE>& lhs, const std::array<IN, SIZE>& rhs)
+[[nodiscard]] OUT dot_product(const std::array<IN, SIZE>& lhs, const std::array<IN, SIZE>& rhs)
 {
     OUT result = 0;
     for (size_t i = 0; i < SIZE; i++)
@@ -10,4 +11,22 @@ OUT dot_product(const std::array<IN, SIZE>& lhs, const std::array<IN, SIZE>& rhs
         result += lhs[i] * rhs[i];
     }
     return result;
+}
+
+template <typename T, size_t SIZE>
+void apply_ReLU(std::array<T, SIZE>& source)
+{
+    for (size_t i = 0; i < SIZE; i++)
+        source[i] = std::max(T(0), source[i]);
+}
+
+template <typename T, size_t SIZE>
+[[nodiscard]] std::array<T, SIZE> copy_ReLU(const std::array<T, SIZE>& source)
+{
+    std::array<T, SIZE> ret;
+
+    for (size_t i = 0; i < SIZE; i++)
+        ret[i] = std::max(T(0), source[i]);
+
+    return ret;
 }
