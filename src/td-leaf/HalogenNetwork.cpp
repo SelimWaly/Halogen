@@ -4,12 +4,12 @@
 
 #include "matrix_operations.h"
 
-std::array<std::array<float, architecture[1]>, architecture[0]> HalogenNetwork::l1_weight;
-std::array<float, architecture[1]> HalogenNetwork::l1_bias;
+TransposeLayer<float, architecture[0], architecture[1]> HalogenNetwork::l1;
+Layer<float, architecture[1], architecture[2]> HalogenNetwork::l2;
 
 void HalogenNetwork::Recalculate(const Position& position)
 {
-    AccumulatorStack = { { l1_bias } };
+    AccumulatorStack = { { l1.bias } };
 
     for (int i = 0; i < N_PIECES; i++)
     {
@@ -40,7 +40,7 @@ void HalogenNetwork::AddInput(Square square, Pieces piece)
 
     for (size_t j = 0; j < architecture[1]; j++)
     {
-        AccumulatorStack.back()[j] += l1_weight[input][j];
+        AccumulatorStack.back()[j] += l1.weight[input][j];
     }
 }
 
@@ -50,13 +50,13 @@ void HalogenNetwork::RemoveInput(Square square, Pieces piece)
 
     for (size_t j = 0; j < architecture[1]; j++)
     {
-        AccumulatorStack.back()[j] -= l1_weight[input][j];
+        AccumulatorStack.back()[j] -= l1.weight[input][j];
     }
 }
 
 int16_t HalogenNetwork::Eval(Players) const
 {
-    return AccumulatorStack.back()[0];
+    return l2.bias[0] + dot_product<float>(copy_ReLU(AccumulatorStack.back()), l2.weight[0]);
 }
 
 int HalogenNetwork::index(Square square, Pieces piece) const
