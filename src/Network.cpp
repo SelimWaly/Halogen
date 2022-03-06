@@ -9,7 +9,7 @@
 #include "Position.h"
 #include "incbin/incbin.h"
 
-INCBIN(Net, "768-1_g100245.nn");
+INCBIN(Net, "768-1_g101430.nn");
 
 std::array<std::array<float, HIDDEN_NEURONS>, INPUT_NEURONS> Network::hiddenWeights = {};
 std::array<float, HIDDEN_NEURONS> Network::hiddenBias = {};
@@ -42,9 +42,9 @@ void Network::Init()
 {
     auto Data = reinterpret_cast<const float*>(gNetData);
 
-    for (size_t i = 0; i < INPUT_NEURONS; i++)
-        for (size_t j = 0; j < HIDDEN_NEURONS; j++)
-            hiddenWeights[i][j] = *Data++;
+    for (size_t i = 0; i < HIDDEN_NEURONS; i++)
+        for (size_t j = 0; j < INPUT_NEURONS; j++)
+            hiddenWeights[j][i] = *Data++;
 
     for (size_t i = 0; i < HIDDEN_NEURONS; i++)
         hiddenBias[i] = *Data++;
