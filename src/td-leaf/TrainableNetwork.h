@@ -21,7 +21,7 @@ public:
 
         constexpr static double beta_1 = 0.9;
         constexpr static double beta_2 = 0.999;
-        constexpr static double alpha = 0.01;
+        constexpr static double alpha = 0.001;
         constexpr static double epsilon = 10e-8;
     };
 
