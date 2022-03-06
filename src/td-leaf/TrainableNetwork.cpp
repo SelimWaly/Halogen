@@ -97,9 +97,9 @@ void TrainableNetwork::SaveWeights(const std::string& filename) const
 
     auto save_layer = [&file, &save_bias](auto& layer)
     {
-        for (size_t i = 0; i < layer.weight.size(); i++)
+        for (size_t i = 0; i < layer.outputs; i++)
         {
-            for (size_t j = 0; j < layer.weight[i].size(); j++)
+            for (size_t j = 0; j < layer.inputs; j++)
             {
                 file.write(reinterpret_cast<const char*>(&layer.weight[i][j]), sizeof(float));
             }
@@ -110,9 +110,9 @@ void TrainableNetwork::SaveWeights(const std::string& filename) const
 
     auto save_transpose_layer = [&file, &save_bias](auto& layer)
     {
-        for (size_t i = 0; i < layer.weight.size(); i++)
+        for (size_t i = 0; i < layer.outputs; i++)
         {
-            for (size_t j = 0; j < layer.weight[i].size(); j++)
+            for (size_t j = 0; j < layer.inputs; j++)
             {
                 file.write(reinterpret_cast<const char*>(&layer.weight[j][i]), sizeof(float));
             }
