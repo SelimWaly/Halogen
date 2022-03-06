@@ -9,7 +9,7 @@
 #include "Position.h"
 #include "incbin/incbin.h"
 
-INCBIN(Net, "768-1_g101430.nn");
+INCBIN(Net, "768-1_g203665.nn");
 
 std::array<std::array<float, HIDDEN_NEURONS>, INPUT_NEURONS> Network::hiddenWeights = {};
 std::array<float, HIDDEN_NEURONS> Network::hiddenBias = {};
