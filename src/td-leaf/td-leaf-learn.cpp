@@ -73,7 +73,7 @@ void info_thread(TrainableNetwork& network)
         {
             last_save = std::chrono::steady_clock::now();
 
-            network.SaveWeights("768-1_g" + std::to_string(game_count) + ".nn");
+            network.SaveWeights("768-16-1_g" + std::to_string(game_count) + ".nn");
         }
     }
 }
