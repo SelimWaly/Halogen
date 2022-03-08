@@ -56,6 +56,7 @@ jobs:
         shell: msys2 {0}
         run: |
          cd src
+         ls /c/msys64/${{ matrix.config.system }}/bin
          make ${{ matrix.target }} CXX=${{ matrix.config.compiler }} -j2
 
       - name: Check bench matches commit message

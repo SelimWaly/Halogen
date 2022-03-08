@@ -46,7 +46,7 @@ POPCNTFLAGS = -DUSE_POPCNT -msse3 -mpopcnt
 PEXTFLAGS   = $(POPCNTFLAGS) -DUSE_PEXT -mbmi2
 AVX2FLAGS   = -DUSE_AVX2 -msse -msse3 -mpopcnt -mavx2 -msse4.1 -mssse3 -msse2
 
-LDFLAGS   = --whole-archive -lpthread --no-whole-archive -lm
+LDFLAGS   = -Wl,--whole-archive -lpthread -Wl,--no-whole-archive -lm
 CXXFLAGS := $(INC_FLAGS) -MMD -MP
 
 .PHONY: native
