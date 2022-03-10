@@ -23,7 +23,7 @@ template <typename T, size_t in, size_t out>
 void update_gradient(Layer<TrainableNetwork::adam_state, in, out>& adam, const std::array<T, out>& gradient, const std::array<T, in>& activation);
 
 template <typename T, size_t in, size_t out>
-void update_gradient_sparse(TransposeLayer<TrainableNetwork::adam_state, in, out>& adam, const std::array<T, out>& gradient, const std::vector<int>& activation);
+void update_gradient_sparse_half(TransposeLayer<TrainableNetwork::adam_state, in, out>& adam, const std::array<T, out * 2>& gradient, const std::vector<int>& sparse_stm, const std::vector<int>& sparse_other);
 
 template <typename T, size_t in, size_t out, typename Activation_prime>
 std::array<T, in> calculate_loss_gradient(Layer<T, in, out>& layer, const std::array<T, out>& gradient, const std::array<T, in>& activation, Activation_prime&& activation_prime);
@@ -155,17 +155,7 @@ void TrainableNetwork::Backpropagate(double loss_gradient, const std::array<std:
         { return x > 0.0f; });
 
     // gradient updates
-    decltype(l1.bias) stm_loss_gradient;
-    decltype(l1.bias) other_loss_gradient;
-
-    for (int i = 0; i < architecture[1]; i++)
-    {
-        stm_loss_gradient[i] = l1_loss_gradient[i];
-        other_loss_gradient[i] = l1_loss_gradient[i + architecture[1]];
-    }
-
-    update_gradient_sparse(l1_adam, stm_loss_gradient, sparse_inputs[stm]);
-    update_gradient_sparse(l1_adam, other_loss_gradient, sparse_inputs[!stm]);
+    update_gradient_sparse_half(l1_adam, l1_loss_gradient, sparse_inputs[stm], sparse_inputs[!stm]);
     update_gradient(l2_adam, l2_loss_gradient, l1_activation);
 
     // now actually apply the gradients
@@ -209,15 +199,16 @@ void update_gradient(Layer<TrainableNetwork::adam_state, in, out>& adam, const s
 }
 
 template <typename T, size_t in, size_t out>
-void update_gradient_sparse(TransposeLayer<TrainableNetwork::adam_state, in, out>& adam, const std::array<T, out>& gradient, const std::vector<int>& sparse_inputs)
+void update_gradient_sparse_half(TransposeLayer<TrainableNetwork::adam_state, in, out>& adam, const std::array<T, out * 2>& gradient, const std::vector<int>& sparse_stm, const std::vector<int>& sparse_other)
 {
     for (size_t i = 0; i < adam.weight.size(); i++)
     {
-        double activation = std::find(sparse_inputs.begin(), sparse_inputs.end(), i) != sparse_inputs.end() ? 1 : 0;
+        double activation_stm = std::find(sparse_stm.begin(), sparse_stm.end(), i) != sparse_stm.end() ? 1 : 0;
+        double activation_other = std::find(sparse_other.begin(), sparse_other.end(), i) != sparse_other.end() ? 1 : 0;
 
         for (size_t j = 0; j < adam.weight[i].size(); j++)
         {
-            double g = gradient[j] * activation;
+            double g = gradient[j] * activation_stm + gradient[j + out] * activation_other;
             adam.weight[i][j].m = TrainableNetwork::adam_state::beta_1 * adam.weight[i][j].m + (1 - TrainableNetwork::adam_state::beta_1) * g;
             adam.weight[i][j].v = TrainableNetwork::adam_state::beta_2 * adam.weight[i][j].v + (1 - TrainableNetwork::adam_state::beta_2) * g * g;
         }
@@ -225,7 +216,7 @@ void update_gradient_sparse(TransposeLayer<TrainableNetwork::adam_state, in, out
 
     for (size_t i = 0; i < adam.bias.size(); i++)
     {
-        double g = gradient[i];
+        double g = gradient[i] + gradient[i + out];
         adam.bias[i].m = TrainableNetwork::adam_state::beta_1 * adam.bias[i].m + (1 - TrainableNetwork::adam_state::beta_1) * g;
         adam.bias[i].v = TrainableNetwork::adam_state::beta_2 * adam.bias[i].v + (1 - TrainableNetwork::adam_state::beta_2) * g * g;
     }
