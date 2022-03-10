@@ -9,15 +9,13 @@
 #include "Position.h"
 #include "incbin/incbin.h"
 
-INCBIN(Net, "d7d569e5.nn");
+INCBIN(Net, "768-16-1_g78880.nn");
 
-std::array<std::array<int16_t, HIDDEN_NEURONS>, INPUT_NEURONS> Network::hiddenWeights = {};
-std::array<int16_t, HIDDEN_NEURONS> Network::hiddenBias = {};
-std::array<int16_t, HIDDEN_NEURONS* 2> Network::outputWeights = {};
-int16_t Network::outputBias = {};
+std::array<std::array<float, HIDDEN_NEURONS>, INPUT_NEURONS> Network::hiddenWeights = {};
+std::array<float, HIDDEN_NEURONS> Network::hiddenBias = {};
+std::array<float, HIDDEN_NEURONS* 2> Network::outputWeights = {};
+float Network::outputBias = {};
 
-constexpr int16_t L1_SCALE = 128;
-constexpr int16_t L2_SCALE = 128;
 constexpr double SCALE_FACTOR = 1; // Found empirically to maximize elo
 
 template <typename T, size_t SIZE>
@@ -47,20 +45,19 @@ void DotProductHalves(const std::array<T_in, SIZE>& stm, const std::array<T_in, 
 
 void Network::Init()
 {
-    // Koi nets must skip 8 bytes
-    auto Data = reinterpret_cast<const float*>(gNetData + 8);
-
-    for (size_t i = 0; i < INPUT_NEURONS; i++)
-        for (size_t j = 0; j < HIDDEN_NEURONS; j++)
-            hiddenWeights[i][j] = (int16_t)round(*Data++ * L1_SCALE);
+    auto Data = reinterpret_cast<const float*>(gNetData);
 
     for (size_t i = 0; i < HIDDEN_NEURONS; i++)
-        hiddenBias[i] = (int16_t)round(*Data++ * L1_SCALE);
+        for (size_t j = 0; j < INPUT_NEURONS; j++)
+            hiddenWeights[j][i] = *Data++;
+
+    for (size_t i = 0; i < HIDDEN_NEURONS; i++)
+        hiddenBias[i] = *Data++;
 
     for (size_t i = 0; i < HIDDEN_NEURONS * 2; i++)
-        outputWeights[i] = (int16_t)round(*Data++ * SCALE_FACTOR * L2_SCALE);
+        outputWeights[i] = *Data++;
 
-    outputBias = (int16_t)round(*Data++ * SCALE_FACTOR * L2_SCALE);
+    outputBias = *Data++;
 
     assert(reinterpret_cast<const unsigned char*>(Data) == gNetData + gNetSize);
 }
@@ -132,9 +129,8 @@ void Network::RemoveInput(Square square, Pieces piece)
 
 int16_t Network::Eval(Players stm) const
 {
-    int32_t output = outputBias * L1_SCALE;
+    float output = outputBias;
     DotProductHalves(ReLU(AccumulatorStack.back().side[stm]), ReLU(AccumulatorStack.back().side[!stm]), outputWeights, output);
-    output /= L1_SCALE * L2_SCALE;
 
     // 'half' or 'relative' nets return a score relative to the side to move
     // but Halogen expects a score relative to white
