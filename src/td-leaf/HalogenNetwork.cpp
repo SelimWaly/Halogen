@@ -9,7 +9,7 @@ Layer<float, architecture[1], architecture[2]> HalogenNetwork::l2;
 
 void HalogenNetwork::Recalculate(const Position& position)
 {
-    AccumulatorStack = { { l1.bias } };
+    AccumulatorStack = { Accumulator(l1.bias) };
 
     for (int i = 0; i < N_PIECES; i++)
     {

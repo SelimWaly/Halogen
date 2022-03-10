@@ -131,7 +131,7 @@ void TrainableNetwork::Backpropagate(double loss_gradient, const std::vector<int
 
     // do the forward pass and save the activations:
 
-    std::array<float, architecture[1]> l1_activation = {};
+    std::array<float, architecture[1]> l1_activation = l1.bias;
 
     for (size_t i = 0; i < sparse_inputs.size(); i++)
     {
