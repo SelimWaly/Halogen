@@ -138,11 +138,18 @@ void TrainableNetwork::Backpropagate(double loss_gradient, const std::array<std:
     std::copy(l1.bias.begin(), l1.bias.end(), l1_activation.begin());
     std::copy(l1.bias.begin(), l1.bias.end(), l1_activation.begin() + architecture[1]);
 
-    for (size_t i = 0; i < sparse_inputs.size(); i++)
+    for (size_t i = 0; i < sparse_inputs[stm].size(); i++)
     {
         for (int j = 0; j < architecture[1]; j++)
         {
             l1_activation[j] += l1.weight[sparse_inputs[stm][i]][j];
+        }
+    }
+
+    for (size_t i = 0; i < sparse_inputs[!stm].size(); i++)
+    {
+        for (int j = 0; j < architecture[1]; j++)
+        {
             l1_activation[j + architecture[1]] += l1.weight[sparse_inputs[!stm][i]][j];
         }
     }
