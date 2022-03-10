@@ -108,7 +108,8 @@ float sigmoid(float x)
 struct TD_game_result
 {
     float score;
-    std::vector<int> sparseInputs = {};
+    Players stm;
+    std::array<std::vector<int>, N_PLAYERS> sparseInputs = {};
     double delta = 0; // between this and next
 };
 
@@ -139,11 +140,11 @@ void SelfPlayGame(TrainableNetwork& network, ThreadSharedData& data)
         {
             if (IsInCheck(position))
             {
-                results.push_back({ position.GetTurn() == WHITE ? 0.f : 1.f });
+                results.push_back({ position.GetTurn() == WHITE ? 0.f : 1.f, position.GetTurn() });
             }
             else
             {
-                results.push_back({ 0.5f });
+                results.push_back({ 0.5f, position.GetTurn() });
             }
 
             break;
@@ -152,21 +153,21 @@ void SelfPlayGame(TrainableNetwork& network, ThreadSharedData& data)
         // 50 move rule
         if (position.GetFiftyMoveCount() >= 100)
         {
-            results.push_back({ 0.5f });
+            results.push_back({ 0.5f, position.GetTurn() });
             break;
         }
 
         // 3 fold repitition rule
         if (position.CheckForRep(0, 3))
         {
-            results.push_back({ 0.5f });
+            results.push_back({ 0.5f, position.GetTurn() });
             break;
         }
 
         // insufficent material rule
         if (DeadPosition(position))
         {
-            results.push_back({ 0.5f });
+            results.push_back({ 0.5f, position.GetTurn() });
             break;
         }
 
@@ -197,7 +198,7 @@ void SelfPlayGame(TrainableNetwork& network, ThreadSharedData& data)
         In theory for basic alpha-beta search these would be equal. That is not the case in practice due to
         search instability (transposition table etc) and search score adjustments (checkmate, draw randomness etc).
         */
-        results.push_back({ sigmoid(position.GetEvaluation()), network.GetSparseInputs(position) });
+        results.push_back({ sigmoid(position.GetEvaluation()), position.GetTurn(), network.GetSparseInputs(position) });
 
         for (size_t i = 0; i < pv.size(); i++)
         {
@@ -226,7 +227,7 @@ void SelfPlayGame(TrainableNetwork& network, ThreadSharedData& data)
 
         // note derivative of sigmoid with coefficent k is k*(s)*(1-s)
         double loss_gradient = -delta_sum * results[t].score * (1 - results[t].score) * sigmoid_coeff;
-        network.Backpropagate(loss_gradient, results[t].sparseInputs);
+        network.Backpropagate(loss_gradient, results[t].sparseInputs, results[t].stm);
     }
 
     // std::cout << "Game result: " << results.back().score << " turns: " << turns << std::endl;

@@ -10,24 +10,26 @@ constexpr std::array architecture = {
 
 class Position;
 
+template <typename T, size_t in_count, size_t out_count>
+struct LayerTraits
+{
+    using value_type = T;
+    static constexpr size_t in_count_v = in_count;
+    static constexpr size_t out_count_v = out_count;
+};
+
 // It's more efficent to incrementally update using weights[input][output]
 template <typename T, size_t in_count, size_t out_count>
-struct TransposeLayer
+struct TransposeLayer : LayerTraits<T, in_count, out_count>
 {
-    constexpr static size_t inputs = in_count;
-    constexpr static size_t outputs = out_count;
-
     std::array<std::array<T, out_count>, in_count> weight;
     std::array<T, out_count> bias;
 };
 
 // when doing matrix/vector multiplications, it's more efficent to have weights[output][input]
 template <typename T, size_t in_count, size_t out_count>
-struct Layer
+struct Layer : LayerTraits<T, in_count, out_count>
 {
-    constexpr static size_t inputs = in_count;
-    constexpr static size_t outputs = out_count;
-
     std::array<std::array<T, in_count>, out_count> weight;
     std::array<T, out_count> bias;
 };
@@ -51,13 +53,13 @@ public:
     void AccumulatorPop();
 
 protected:
-    int index(Square square, Pieces piece) const;
+    int index(Square square, Pieces piece, Players view) const;
 
     static TransposeLayer<float, architecture[0], architecture[1]> l1;
-    static Layer<float, architecture[1], architecture[2]> l2;
+    static Layer<float, architecture[1] * 2, architecture[2]> l2;
 
 private:
-    using Accumulator = std::array<float, architecture[1]>;
+    using Accumulator = std::array<std::array<float, architecture[1]>, N_PLAYERS>;
 
     std::vector<Accumulator> AccumulatorStack;
 };
