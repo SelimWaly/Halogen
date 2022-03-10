@@ -227,6 +227,10 @@ void SelfPlayGame(TrainableNetwork& network, ThreadSharedData& data)
 
         // note derivative of sigmoid with coefficent k is k*(s)*(1-s)
         double loss_gradient = -delta_sum * results[t].score * (1 - results[t].score) * sigmoid_coeff;
+
+        // network outputs relative values, but temporal difference is from white's POV
+        loss_gradient = results[t].stm == WHITE ? loss_gradient : -loss_gradient;
+
         network.Backpropagate(loss_gradient, results[t].sparseInputs, results[t].stm);
     }
 
