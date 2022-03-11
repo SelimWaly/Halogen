@@ -7,12 +7,14 @@
 class TrainableNetwork : public HalogenNetwork
 {
 public:
-    std::array<std::vector<int>, N_PLAYERS> GetSparseInputs(const Position& position) const;
+    static std::array<std::vector<int>, N_PLAYERS> GetSparseInputs(const Position& position);
 
-    void InitializeWeightsRandomly() const;
-    void SaveWeights(const std::string& filename) const;
-    void Backpropagate(double loss_gradient, const std::array<std::vector<int>, N_PLAYERS>& sparse_inputs, Players stm);
-    void PrintNetworkDiagnostics() const;
+    static void InitializeWeightsRandomly();
+    static void SaveWeights(const std::string& filename);
+    static void PrintNetworkDiagnostics();
+
+    void UpdateGradients(double loss_gradient, const std::array<std::vector<int>, N_PLAYERS>& sparse_inputs, Players stm);
+    void ApplyOptimizationStep(int n_samples);
 
     struct adam_state
     {
@@ -21,7 +23,7 @@ public:
 
         constexpr static double beta_1 = 0.9;
         constexpr static double beta_2 = 0.999;
-        constexpr static double alpha = 0.001;
+        constexpr static double alpha = 0.001 * 16;
         constexpr static double epsilon = 10e-8;
     };
 
@@ -30,4 +32,7 @@ private:
 
     static TransposeLayer<adam_state, architecture[0], architecture[1]> l1_adam;
     static Layer<adam_state, architecture[1] * 2, architecture[2]> l2_adam;
+
+    TransposeLayer<float, architecture[0], architecture[1]> l1_gradient = {};
+    Layer<float, architecture[1] * 2, architecture[2]> l2_gradient = {};
 };

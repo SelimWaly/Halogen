@@ -12,6 +12,7 @@
 #include "../Position.h"
 #include "../Search.h"
 #include "../SearchData.h"
+#include "HalogenNetwork.h"
 #include "TrainableNetwork.h"
 #include "td-leaf-learn.h"
 
@@ -30,8 +31,9 @@ constexpr int max_threads = 11;
 
 std::atomic<int> game_count = 0;
 
-void learn_thread(TrainableNetwork& network)
+void learn_thread()
 {
+    TrainableNetwork network;
     SearchLimits limits;
     limits.SetDepthLimit(training_depth);
     ThreadSharedData data(std::move(limits));
@@ -73,7 +75,7 @@ void info_thread(TrainableNetwork& network)
         {
             last_save = std::chrono::steady_clock::now();
 
-            network.SaveWeights("768-16-1_g" + std::to_string(game_count) + ".nn");
+            network.SaveWeights("768-" + std::to_string(architecture[1]) + "x2-1_g" + std::to_string(game_count) + ".nn");
         }
     }
 }
@@ -88,10 +90,10 @@ void learn()
     threads.emplace_back(info_thread, std::ref(network));
 
     // always have at least one learning and one info thread.
-    // at most we want max_threadsm total threads.
+    // at most we want max_threads total threads.
     for (int i = 0; i < std::max(1, max_threads - 1); i++)
     {
-        threads.emplace_back(learn_thread, std::ref(network));
+        threads.emplace_back(learn_thread);
     }
 
     for (auto& thread : threads)
@@ -208,7 +210,12 @@ void SelfPlayGame(TrainableNetwork& network, ThreadSharedData& data)
         position.ApplyMove(data.GetBestMove());
     }
 
-    for (int i = 0; i < static_cast<int>(results.size()) - 1; i++)
+    if (results.size() <= 1)
+    {
+        return;
+    }
+
+    for (size_t i = 0; i < results.size() - 1; i++)
     {
         results[i].delta = GAMMA * results[i + 1].score - results[i].score;
         // std::cout << "difference: " << results[i].difference << " scores: " << results[i].score << ", " << results[i + 1].score << std::endl;
@@ -216,11 +223,15 @@ void SelfPlayGame(TrainableNetwork& network, ThreadSharedData& data)
 
     // main td-leaf update step:
 
-    for (int t = 0; t < static_cast<int>(results.size()) - 1; t++)
+    int steps_since_update = 0;
+
+    for (size_t t = 0; t < results.size() - 1; t++)
     {
+        steps_since_update++;
+
         double delta_sum = 0;
 
-        for (int j = t; j < static_cast<int>(results.size()) - 1; j++)
+        for (size_t j = t; j < results.size() - 1; j++)
         {
             delta_sum += results[j].delta * pow(LAMBDA * GAMMA, j - t);
         }
@@ -231,7 +242,18 @@ void SelfPlayGame(TrainableNetwork& network, ThreadSharedData& data)
         // network outputs relative values, but temporal difference is from white's POV
         loss_gradient = results[t].stm == WHITE ? loss_gradient : -loss_gradient;
 
-        network.Backpropagate(loss_gradient, results[t].sparseInputs, results[t].stm);
+        network.UpdateGradients(loss_gradient, results[t].sparseInputs, results[t].stm);
+
+        if (steps_since_update >= 16)
+        {
+            network.ApplyOptimizationStep(steps_since_update);
+            steps_since_update = 0;
+        }
+    }
+
+    if (steps_since_update > 0)
+    {
+        network.ApplyOptimizationStep(steps_since_update);
     }
 
     // std::cout << "Game result: " << results.back().score << " turns: " << turns << std::endl;

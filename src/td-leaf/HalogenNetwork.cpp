@@ -72,7 +72,7 @@ Square MirrorVertically(Square sq)
     return static_cast<Square>(sq ^ 56);
 }
 
-int HalogenNetwork::index(Square square, Pieces piece, Players view) const
+int HalogenNetwork::index(Square square, Pieces piece, Players view)
 {
     Square sq = view == WHITE ? square : MirrorVertically(square);
     Pieces relativeColor = static_cast<Pieces>(view == ColourOfPiece(piece));

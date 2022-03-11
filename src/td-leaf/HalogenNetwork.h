@@ -53,7 +53,7 @@ public:
     void AccumulatorPop();
 
 protected:
-    int index(Square square, Pieces piece, Players view) const;
+    static int index(Square square, Pieces piece, Players view);
 
     static TransposeLayer<float, architecture[0], architecture[1]> l1;
     static Layer<float, architecture[1] * 2, architecture[2]> l2;
