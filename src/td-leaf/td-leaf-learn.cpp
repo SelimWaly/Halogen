@@ -23,7 +23,7 @@ void PrintNetworkDiagnostics(TrainableNetwork& network);
 constexpr double LAMBDA = 0.7; // credit discount factor
 constexpr double GAMMA = 1; // discount rate of future rewards
 
-constexpr int training_depth = 4;
+constexpr int training_depth = 6;
 constexpr double sigmoid_coeff = 2.5 / 400.0;
 // -----------------
 
