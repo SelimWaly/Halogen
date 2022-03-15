@@ -23,19 +23,22 @@ void PrintNetworkDiagnostics(TrainableNetwork& network);
 constexpr double LAMBDA = 0.7; // credit discount factor
 constexpr double GAMMA = 1; // discount rate of future rewards
 
-constexpr int training_depth = 4;
+constexpr int training_nodes = 1000;
 constexpr double sigmoid_coeff = 2.5 / 400.0;
 // -----------------
 
 constexpr int max_threads = 11;
 
-std::atomic<int> game_count = 0;
+std::atomic<uint64_t> game_count = 0;
+
+std::atomic<uint64_t> move_count = 0;
+std::atomic<uint64_t> depth_count = 0;
 
 void learn_thread()
 {
     TrainableNetwork network;
     SearchLimits limits;
-    limits.SetDepthLimit(training_depth);
+    limits.SetNodeLimit(training_nodes);
     ThreadSharedData data(std::move(limits));
 
     while (true)
@@ -49,7 +52,7 @@ void info_thread(TrainableNetwork& network)
 {
     std::chrono::steady_clock::time_point last_print = std::chrono::steady_clock::now();
     std::chrono::steady_clock::time_point last_save = std::chrono::steady_clock::now();
-    std::chrono::steady_clock::time_point start = std::chrono::steady_clock::now();
+    uint64_t game_count_last = 0;
 
     while (true)
     {
@@ -61,14 +64,19 @@ void info_thread(TrainableNetwork& network)
 
         if (std::chrono::duration_cast<std::chrono::seconds>(now - last_print).count() >= 10)
         {
-            last_print = std::chrono::steady_clock::now();
+            auto duration = std::chrono::duration<float>(now - last_print).count();
 
-            std::cout << "Game " << game_count << std::endl;
             network.PrintNetworkDiagnostics();
-            auto duration = std::chrono::duration<float>(now - start).count();
-            std::cout << "Games per second: " << game_count / duration << std::endl;
+            std::cout << "Game " << game_count << std::endl;
+            std::cout << "Games per second: " << (game_count - game_count_last) / duration << std::endl;
+            std::cout << "Average search depth: " << static_cast<double>(depth_count) / static_cast<double>(move_count) << std::endl;
             std::cout << std::endl;
             std::cout << std::endl;
+
+            last_print = std::chrono::steady_clock::now();
+            game_count_last = game_count;
+            move_count = 0;
+            depth_count = 0;
         }
 
         if (std::chrono::duration_cast<std::chrono::minutes>(now - last_save).count() >= 15)
@@ -187,6 +195,8 @@ void SelfPlayGame(TrainableNetwork& network, ThreadSharedData& data)
         SearchThread(position, data);
         // std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
         // time_spend_in_search_ns += std::chrono::duration_cast<std::chrono::nanoseconds>(end - begin).count();
+        depth_count += data.GetDepth() - 1;
+        move_count++;
 
         const auto& pv = searchData.PvTable[0];
 
