@@ -152,6 +152,8 @@ void SearchPosition(Position position, ThreadSharedData& sharedData, unsigned in
             break;
         if (sharedData.GetData(threadID).limits->HitDepthLimit(depth))
             break;
+        if (sharedData.GetData(threadID).limits->HitNodeLimit(sharedData.getNodes()))
+            break;
         if (!sharedData.GetData(threadID).limits->ShouldContinueSearch())
             sharedData.ReportWantsToStop(threadID);
 

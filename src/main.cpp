@@ -128,10 +128,6 @@ int main(int argc, char* argv[])
             int binc = 0;
             int movestogo = 0;
 
-            int searchTime = 0;
-            int depth = 0;
-            int mate = 0;
-
             while (iss >> token)
             {
                 if (token == "wtime")
@@ -147,12 +143,14 @@ int main(int argc, char* argv[])
 
                 else if (token == "mate")
                 {
+                    int mate = 0;
                     iss >> mate;
                     limits.SetMateLimit(mate);
                 }
 
                 else if (token == "depth")
                 {
+                    int depth = 0;
                     iss >> depth;
                     limits.SetDepthLimit(depth);
                 }
@@ -164,8 +162,16 @@ int main(int argc, char* argv[])
 
                 else if (token == "movetime")
                 {
+                    int searchTime = 0;
                     iss >> searchTime;
                     limits.SetTimeLimits(searchTime, searchTime);
+                }
+
+                else if (token == "nodes")
+                {
+                    uint64_t nodes = 0;
+                    iss >> nodes;
+                    limits.SetNodeLimit(nodes);
                 }
             }
 
