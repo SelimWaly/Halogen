@@ -6,8 +6,6 @@
 #include "EvalCache.h"
 #include "Position.h"
 
-void TempoAdjustment(int& eval, const Position& position);
-
 int EvaluatePositionNet(const Position& position, EvalCacheTable& evalTable)
 {
     int eval;
@@ -15,9 +13,6 @@ int EvaluatePositionNet(const Position& position, EvalCacheTable& evalTable)
     if (!evalTable.GetEntry(position.GetZobristKey(), eval))
     {
         eval = position.GetEvaluation();
-
-        TempoAdjustment(eval, position);
-
         evalTable.AddEntry(position.GetZobristKey(), eval);
     }
 
@@ -64,10 +59,4 @@ bool DeadPosition(const Position& position)
         return true; //2
 
     return false;
-}
-
-void TempoAdjustment(int& eval, const Position& position)
-{
-    constexpr static int TEMPO = 10;
-    eval += position.GetTurn() == WHITE ? TEMPO : -TEMPO;
 }
