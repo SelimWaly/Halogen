@@ -23,8 +23,8 @@ public:
 
         constexpr static double beta_1 = 0.9;
         constexpr static double beta_2 = 0.999;
-        constexpr static double alpha = 0.001 * 16;
         constexpr static double epsilon = 10e-8;
+        static double alpha;
     };
 
 private:
@@ -36,3 +36,5 @@ private:
     TransposeLayer<float, architecture[0], architecture[1]> l1_gradient = {};
     Layer<float, architecture[1] * 2, architecture[2]> l2_gradient = {};
 };
+
+inline double TrainableNetwork::adam_state::alpha = 0.001 * 16;

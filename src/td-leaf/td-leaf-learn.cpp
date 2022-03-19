@@ -25,6 +25,8 @@ constexpr double GAMMA = 1; // discount rate of future rewards
 
 constexpr int training_nodes = 1000;
 constexpr double sigmoid_coeff = 2.5 / 400.0;
+
+constexpr double training_time_hours = 12;
 // -----------------
 
 constexpr int max_threads = 11;
@@ -34,6 +36,8 @@ std::atomic<uint64_t> game_count = 0;
 std::atomic<uint64_t> move_count = 0;
 std::atomic<uint64_t> depth_count = 0;
 
+std::atomic<bool> stop_signal = false;
+
 void learn_thread()
 {
     TrainableNetwork network;
@@ -41,7 +45,7 @@ void learn_thread()
     limits.SetNodeLimit(training_nodes);
     ThreadSharedData data(std::move(limits));
 
-    while (true)
+    while (!stop_signal)
     {
         SelfPlayGame(network, data);
         game_count++;
@@ -50,8 +54,9 @@ void learn_thread()
 
 void info_thread(TrainableNetwork& network)
 {
-    std::chrono::steady_clock::time_point last_print = std::chrono::steady_clock::now();
-    std::chrono::steady_clock::time_point last_save = std::chrono::steady_clock::now();
+    std::chrono::steady_clock::time_point start = std::chrono::steady_clock::now();
+    std::chrono::steady_clock::time_point last_print = start;
+    std::chrono::steady_clock::time_point last_save = start;
     uint64_t game_count_last = 0;
 
     while (true)
@@ -70,6 +75,7 @@ void info_thread(TrainableNetwork& network)
             std::cout << "Game " << game_count << std::endl;
             std::cout << "Games per second: " << (game_count - game_count_last) / duration << std::endl;
             std::cout << "Average search depth: " << static_cast<double>(depth_count) / static_cast<double>(move_count) << std::endl;
+            std::cout << "Learning rate: " << TrainableNetwork::adam_state::alpha << std::endl;
             std::cout << std::endl;
             std::cout << std::endl;
 
@@ -77,6 +83,9 @@ void info_thread(TrainableNetwork& network)
             game_count_last = game_count;
             move_count = 0;
             depth_count = 0;
+
+            // cosine annealing
+            TrainableNetwork::adam_state::alpha = (cos(std::chrono::duration<float>(now - start).count() * M_PI / (60.0 * 60.0 * training_time_hours)) + 1.0) / 2.0 * 0.001 * 16;
         }
 
         if (std::chrono::duration_cast<std::chrono::minutes>(now - last_save).count() >= 15)
@@ -84,6 +93,13 @@ void info_thread(TrainableNetwork& network)
             last_save = std::chrono::steady_clock::now();
 
             network.SaveWeights("768-" + std::to_string(architecture[1]) + "x2-1_g" + std::to_string(game_count) + ".nn");
+        }
+
+        if (std::chrono::duration<float>(now - start).count() >= 60.0 * 60.0 * training_time_hours)
+        {
+            std::cout << "Training complete." << std::endl;
+            stop_signal = true;
+            return;
         }
     }
 }
