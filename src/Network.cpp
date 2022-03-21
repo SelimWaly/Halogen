@@ -64,7 +64,7 @@ auto calculate_quantization_l1()
     std::cout << "min activation: " << min_activation << std::endl;
 #endif
 
-    auto quantization = std::numeric_limits<int16_t>::max() / std::max(std::abs(max_activation), std::abs(min_activation)) / std::sqrt(HIDDEN_NEURONS);
+    auto quantization = std::numeric_limits<int16_t>::max() / std::max(std::abs(max_activation), std::abs(min_activation)) / std::sqrt(HIDDEN_NEURONS * 2);
     int16_t limited_quantization = std::pow(2, std::floor(std::log2(quantization)));
 
 #ifndef NDEBUG
@@ -95,7 +95,7 @@ auto calculate_quantization_l2()
     std::cout << "l2 min: " << min << std::endl;
 #endif
 
-    auto quantization = std::numeric_limits<int16_t>::max() / std::max(std::abs(max), std::abs(min)) / std::sqrt(HIDDEN_NEURONS);
+    auto quantization = std::numeric_limits<int16_t>::max() / std::max(std::abs(max), std::abs(min)) / std::sqrt(HIDDEN_NEURONS * 2);
     int16_t limited_quantization = std::pow(2, std::floor(std::log2(quantization)));
 
 #ifndef NDEBUG
