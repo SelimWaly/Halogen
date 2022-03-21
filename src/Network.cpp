@@ -17,6 +17,8 @@ std::array<int16_t, HIDDEN_NEURONS> Network::hiddenBias = {};
 std::array<int16_t, HIDDEN_NEURONS* 2> Network::outputWeights = {};
 int16_t Network::outputBias = {};
 
+int index(Square square, Pieces piece, Players view);
+
 auto calculate_quantization_l1()
 {
     /*
@@ -41,18 +43,56 @@ auto calculate_quantization_l1()
     for (size_t i = 0; i < HIDDEN_NEURONS; i++)
         quantization_l1_bias[i] = *Data++;
 
+    // optimization: we can only have one king at a time, so get the largest and smallest value and set all others to zero
     for (auto& row : quantization_l1_weight)
-        std::sort(row.begin(), row.end());
+    {
+        row[index(SQ_A1, WHITE_KING, WHITE)] = *std::max_element(row.begin() + index(SQ_A1, WHITE_KING, WHITE), row.begin() + index(SQ_H8, WHITE_KING, WHITE));
+        row[index(SQ_A2, WHITE_KING, WHITE)] = *std::min_element(row.begin() + index(SQ_A1, WHITE_KING, WHITE), row.begin() + index(SQ_H8, WHITE_KING, WHITE));
+
+        row[index(SQ_A1, BLACK_KING, WHITE)] = *std::max_element(row.begin() + index(SQ_A1, BLACK_KING, WHITE), row.begin() + index(SQ_H8, BLACK_KING, WHITE));
+        row[index(SQ_A2, BLACK_KING, WHITE)] = *std::min_element(row.begin() + index(SQ_A1, BLACK_KING, WHITE), row.begin() + index(SQ_H8, BLACK_KING, WHITE));
+
+        for (int i = index(SQ_A3, WHITE_KING, WHITE); i <= index(SQ_H8, WHITE_KING, WHITE); i++)
+            row[i] = 0;
+
+        for (int i = index(SQ_A3, BLACK_KING, WHITE); i <= index(SQ_H8, BLACK_KING, WHITE); i++)
+            row[i] = 0;
+    }
+
+    // optimization: some pawn squares are impossible, set them to zero
+    for (auto& row : quantization_l1_weight)
+    {
+        for (int i = index(SQ_A1, WHITE_PAWN, WHITE); i <= index(SQ_A8, WHITE_PAWN, WHITE); i++)
+            row[i] = 0;
+
+        for (int i = index(SQ_H1, WHITE_PAWN, WHITE); i <= index(SQ_H8, WHITE_PAWN, WHITE); i++)
+            row[i] = 0;
+
+        for (int i = index(SQ_A1, BLACK_PAWN, WHITE); i <= index(SQ_A8, BLACK_PAWN, WHITE); i++)
+            row[i] = 0;
+
+        for (int i = index(SQ_H1, BLACK_PAWN, WHITE); i <= index(SQ_H8, BLACK_PAWN, WHITE); i++)
+            row[i] = 0;
+    }
+
+    // get the 16 largest and smallest weights for white and black pieces.
+    for (auto& row : quantization_l1_weight)
+    {
+        std::sort(row.begin(), row.begin() + INPUT_NEURONS / 2);
+        std::sort(row.begin() + INPUT_NEURONS / 2, row.end());
+    }
 
     std::array<float, HIDDEN_NEURONS> highest = quantization_l1_bias;
     std::array<float, HIDDEN_NEURONS> lowest = quantization_l1_bias;
 
     for (size_t i = 0; i < HIDDEN_NEURONS; i++)
     {
-        for (int j = 0; j < 32; j++)
+        for (int j = 0; j < 16; j++)
         {
-            highest[i] = quantization_l1_weight[i][INPUT_NEURONS - 1 - j];
-            lowest[i] = quantization_l1_weight[i][j];
+            highest[i] += quantization_l1_weight[i][INPUT_NEURONS - 1 - j];
+            highest[i] += quantization_l1_weight[i][INPUT_NEURONS / 2 - 1 - j];
+            lowest[i] += quantization_l1_weight[i][j];
+            lowest[i] += quantization_l1_weight[i][INPUT_NEURONS / 2 + j];
         }
     }
 
@@ -64,7 +104,7 @@ auto calculate_quantization_l1()
     std::cout << "min activation: " << min_activation << std::endl;
 #endif
 
-    auto quantization = std::numeric_limits<int16_t>::max() / std::max(std::abs(max_activation), std::abs(min_activation)) / std::sqrt(HIDDEN_NEURONS * 2);
+    auto quantization = std::numeric_limits<int16_t>::max() / std::max(std::abs(max_activation), std::abs(min_activation));
     int16_t limited_quantization = std::pow(2, std::floor(std::log2(quantization)));
 
 #ifndef NDEBUG
@@ -95,7 +135,7 @@ auto calculate_quantization_l2()
     std::cout << "l2 min: " << min << std::endl;
 #endif
 
-    auto quantization = std::numeric_limits<int16_t>::max() / std::max(std::abs(max), std::abs(min)) / std::sqrt(HIDDEN_NEURONS * 2);
+    auto quantization = std::numeric_limits<int16_t>::max() / std::max(std::abs(max), std::abs(min));
     int16_t limited_quantization = std::pow(2, std::floor(std::log2(quantization)));
 
 #ifndef NDEBUG
@@ -125,12 +165,12 @@ void DotProductHalves(const std::array<T_in, SIZE>& stm, const std::array<T_in, 
 {
     for (size_t i = 0; i < SIZE; i++)
     {
-        output += stm[i] * weights[i];
+        output += stm[i] * weights[i] / (SIZE * 2);
     }
 
     for (size_t i = 0; i < SIZE; i++)
     {
-        output += other[i] * weights[i + SIZE];
+        output += other[i] * weights[i + SIZE] / (SIZE * 2);
     }
 }
 
@@ -221,9 +261,9 @@ void Network::RemoveInput(Square square, Pieces piece)
 
 int16_t Network::Eval(Players stm) const
 {
-    int32_t output = outputBias * l1_quantization;
+    int32_t output = outputBias * l1_quantization / (2 * HIDDEN_NEURONS);
     DotProductHalves(ReLU(AccumulatorStack.back().side[stm]), ReLU(AccumulatorStack.back().side[!stm]), outputWeights, output);
-    output /= l2_quantization * l1_quantization;
+    output /= l2_quantization * l1_quantization / (2 * HIDDEN_NEURONS);
 
     // 'half' or 'relative' nets return a score relative to the side to move
     // but Halogen expects a score relative to white
