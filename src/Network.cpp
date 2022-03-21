@@ -85,7 +85,7 @@ auto calculate_quantization_l2()
     std::cout << "l2 min: " << min << std::endl;
 #endif
 
-    auto quantization = std::numeric_limits<int16_t>::max() / std::max(std::abs(max), std::abs(min)) / sqrt(HIDDEN_NEURONS * 2);
+    auto quantization = std::numeric_limits<int16_t>::max() / std::max(std::abs(max), std::abs(min)) / (HIDDEN_NEURONS * 2);
     int16_t limited_quantization = std::pow(2, std::floor(std::log2(quantization)));
 
 #ifndef NDEBUG
