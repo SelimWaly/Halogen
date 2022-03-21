@@ -20,7 +20,7 @@ void SelfPlayGame(TrainableNetwork& network, ThreadSharedData& data);
 void PrintNetworkDiagnostics(TrainableNetwork& network);
 
 // hyperparameters
-constexpr double LAMBDA = 0.7; // credit discount factor
+constexpr double LAMBDA = 0.8; // credit discount factor
 constexpr double GAMMA = 1; // discount rate of future rewards
 
 constexpr int training_nodes = 1000;
@@ -91,7 +91,6 @@ void info_thread(TrainableNetwork& network)
         if (std::chrono::duration_cast<std::chrono::minutes>(now - last_save).count() >= 15)
         {
             last_save = std::chrono::steady_clock::now();
-
             network.SaveWeights("768-" + std::to_string(architecture[1]) + "x2-1_g" + std::to_string(game_count) + ".nn");
         }
 
@@ -99,6 +98,7 @@ void info_thread(TrainableNetwork& network)
         {
             std::cout << "Training complete." << std::endl;
             stop_signal = true;
+            network.SaveWeights("768-" + std::to_string(architecture[1]) + "x2-1_g" + std::to_string(game_count) + ".nn");
             return;
         }
     }
