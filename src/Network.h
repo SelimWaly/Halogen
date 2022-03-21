@@ -40,6 +40,6 @@ private:
 
     static std::array<std::array<int16_t, HIDDEN_NEURONS>, INPUT_NEURONS> hiddenWeights;
     static std::array<int16_t, HIDDEN_NEURONS> hiddenBias;
-    static std::array<int16_t, HIDDEN_NEURONS * 2> outputWeights;
-    static int16_t outputBias;
+    static std::array<int8_t, HIDDEN_NEURONS * 2> outputWeights;
+    static int8_t outputBias;
 };

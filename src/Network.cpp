@@ -14,21 +14,13 @@ INCBIN(Net, EVALFILE);
 
 std::array<std::array<int16_t, HIDDEN_NEURONS>, INPUT_NEURONS> Network::hiddenWeights = {};
 std::array<int16_t, HIDDEN_NEURONS> Network::hiddenBias = {};
-std::array<int16_t, HIDDEN_NEURONS* 2> Network::outputWeights = {};
-int16_t Network::outputBias = {};
+std::array<int8_t, HIDDEN_NEURONS* 2> Network::outputWeights = {};
+int8_t Network::outputBias = {};
+
+int index(Square square, Pieces piece, Players view);
 
 auto calculate_quantization_l1()
 {
-    /*
-    For l1, we have int16_t weights accumulating into int16_t values. We find the maximum possible accumulated
-    value by taking the 32 largest and smallest weights for each hidden neuron. We then figure out the scale
-    to translate these maximum values and minimum values to a range that fits in a int16_t.
-
-    There is one final step, because the activations just fit into int16_t and and the l2 weights also are scaled
-    to fit in a int16_t, the product fits just in a int32_t. This is problematic because we accumulate these int32_t values
-    one for each hidden neuron. In order to adjust for this, we divide all quantization by the sqrt of the hidden neurons.
-    */
-
     auto Data = reinterpret_cast<const float*>(gNetData);
 
     std::array<std::array<float, INPUT_NEURONS>, HIDDEN_NEURONS> quantization_l1_weight;
@@ -41,18 +33,56 @@ auto calculate_quantization_l1()
     for (size_t i = 0; i < HIDDEN_NEURONS; i++)
         quantization_l1_bias[i] = *Data++;
 
+    // optimization: we can only have one king at a time, so get the largest and smallest value and set all others to zero
     for (auto& row : quantization_l1_weight)
-        std::sort(row.begin(), row.end());
+    {
+        row[index(SQ_A1, WHITE_KING, WHITE)] = *std::max_element(row.begin() + index(SQ_A1, WHITE_KING, WHITE), row.begin() + index(SQ_H8, WHITE_KING, WHITE));
+        row[index(SQ_A2, WHITE_KING, WHITE)] = *std::min_element(row.begin() + index(SQ_A1, WHITE_KING, WHITE), row.begin() + index(SQ_H8, WHITE_KING, WHITE));
+
+        row[index(SQ_A1, BLACK_KING, WHITE)] = *std::max_element(row.begin() + index(SQ_A1, BLACK_KING, WHITE), row.begin() + index(SQ_H8, BLACK_KING, WHITE));
+        row[index(SQ_A2, BLACK_KING, WHITE)] = *std::min_element(row.begin() + index(SQ_A1, BLACK_KING, WHITE), row.begin() + index(SQ_H8, BLACK_KING, WHITE));
+
+        for (int i = index(SQ_A3, WHITE_KING, WHITE); i <= index(SQ_H8, WHITE_KING, WHITE); i++)
+            row[i] = 0;
+
+        for (int i = index(SQ_A3, BLACK_KING, WHITE); i <= index(SQ_H8, BLACK_KING, WHITE); i++)
+            row[i] = 0;
+    }
+
+    // optimization: some pawn squares are impossible, set them to zero
+    for (auto& row : quantization_l1_weight)
+    {
+        for (int i = index(SQ_A1, WHITE_PAWN, WHITE); i <= index(SQ_A8, WHITE_PAWN, WHITE); i++)
+            row[i] = 0;
+
+        for (int i = index(SQ_H1, WHITE_PAWN, WHITE); i <= index(SQ_H8, WHITE_PAWN, WHITE); i++)
+            row[i] = 0;
+
+        for (int i = index(SQ_A1, BLACK_PAWN, WHITE); i <= index(SQ_A8, BLACK_PAWN, WHITE); i++)
+            row[i] = 0;
+
+        for (int i = index(SQ_H1, BLACK_PAWN, WHITE); i <= index(SQ_H8, BLACK_PAWN, WHITE); i++)
+            row[i] = 0;
+    }
+
+    // get the 16 largest and smallest weights for white and black pieces.
+    for (auto& row : quantization_l1_weight)
+    {
+        std::sort(row.begin(), row.begin() + INPUT_NEURONS / 2);
+        std::sort(row.begin() + INPUT_NEURONS / 2, row.end());
+    }
 
     std::array<float, HIDDEN_NEURONS> highest = quantization_l1_bias;
     std::array<float, HIDDEN_NEURONS> lowest = quantization_l1_bias;
 
     for (size_t i = 0; i < HIDDEN_NEURONS; i++)
     {
-        for (int j = 0; j < 32; j++)
+        for (int j = 0; j < 16; j++)
         {
-            highest[i] = quantization_l1_weight[i][INPUT_NEURONS - 1 - j];
-            lowest[i] = quantization_l1_weight[i][j];
+            highest[i] += quantization_l1_weight[i][INPUT_NEURONS - 1 - j];
+            highest[i] += quantization_l1_weight[i][INPUT_NEURONS / 2 - 1 - j];
+            lowest[i] += quantization_l1_weight[i][j];
+            lowest[i] += quantization_l1_weight[i][INPUT_NEURONS / 2 + j];
         }
     }
 
@@ -64,7 +94,7 @@ auto calculate_quantization_l1()
     std::cout << "min activation: " << min_activation << std::endl;
 #endif
 
-    auto quantization = std::numeric_limits<int16_t>::max() / std::max(std::abs(max_activation), std::abs(min_activation)) / std::sqrt(HIDDEN_NEURONS * 2);
+    auto quantization = std::numeric_limits<int16_t>::max() / std::max(std::abs(max_activation), std::abs(min_activation));
     int16_t limited_quantization = std::pow(2, std::floor(std::log2(quantization)));
 
 #ifndef NDEBUG
@@ -95,19 +125,19 @@ auto calculate_quantization_l2()
     std::cout << "l2 min: " << min << std::endl;
 #endif
 
-    auto quantization = std::numeric_limits<int16_t>::max() / std::max(std::abs(max), std::abs(min)) / std::sqrt(HIDDEN_NEURONS * 2);
-    int16_t limited_quantization = std::pow(2, std::floor(std::log2(quantization)));
+    auto quantization = std::numeric_limits<int8_t>::max() / std::max(std::abs(max), std::abs(min));
+    int8_t limited_quantization = std::pow(2, std::floor(std::log2(quantization)));
 
 #ifndef NDEBUG
     std::cout << "l2 quantization: " << quantization << std::endl;
-    std::cout << "l2 limited quantization: " << limited_quantization << std::endl;
+    std::cout << "l2 limited quantization: " << (int)limited_quantization << std::endl;
 #endif
 
     return limited_quantization;
 }
 
 int16_t l1_quantization = calculate_quantization_l1();
-int16_t l2_quantization = calculate_quantization_l2();
+int8_t l2_quantization = calculate_quantization_l2();
 
 template <typename T, size_t SIZE>
 [[nodiscard]] std::array<T, SIZE> ReLU(const std::array<T, SIZE>& source)
@@ -120,8 +150,8 @@ template <typename T, size_t SIZE>
     return ret;
 }
 
-template <typename T_out, typename T_in, size_t SIZE>
-void DotProductHalves(const std::array<T_in, SIZE>& stm, const std::array<T_in, SIZE>& other, const std::array<T_in, SIZE * 2>& weights, T_out& output)
+template <typename T_out, typename T, typename U, size_t SIZE>
+void DotProductHalves(const std::array<T, SIZE>& stm, const std::array<T, SIZE>& other, const std::array<U, SIZE * 2>& weights, T_out& output)
 {
     for (size_t i = 0; i < SIZE; i++)
     {
@@ -136,20 +166,20 @@ void DotProductHalves(const std::array<T_in, SIZE>& stm, const std::array<T_in, 
 
 void Network::Init()
 {
-    std::cout << EVALFILE " embeded in binary in with dynamic quantization { " << l1_quantization << ", " << l2_quantization << " }" << std::endl;
+    std::cout << EVALFILE " embeded in binary in with dynamic quantization { " << l1_quantization << ", " << (int)l2_quantization << " }" << std::endl;
     auto Data = reinterpret_cast<const float*>(gNetData);
 
     for (size_t i = 0; i < HIDDEN_NEURONS; i++)
         for (size_t j = 0; j < INPUT_NEURONS; j++)
-            hiddenWeights[j][i] = static_cast<int16_t>(std::round(*Data++ * l1_quantization));
+            hiddenWeights[j][i] = std::round(*Data++ * l1_quantization);
 
     for (size_t i = 0; i < HIDDEN_NEURONS; i++)
-        hiddenBias[i] = static_cast<int16_t>(std::round(*Data++ * l1_quantization));
+        hiddenBias[i] = std::round(*Data++ * l1_quantization);
 
     for (size_t i = 0; i < HIDDEN_NEURONS * 2; i++)
-        outputWeights[i] = static_cast<int16_t>(std::round(*Data++ * l2_quantization));
+        outputWeights[i] = std::round(*Data++ * l2_quantization);
 
-    outputBias = static_cast<int16_t>(std::round(*Data++ * l2_quantization));
+    outputBias = std::round(*Data++ * l2_quantization);
 
     assert(reinterpret_cast<const unsigned char*>(Data) == gNetData + gNetSize);
 }
