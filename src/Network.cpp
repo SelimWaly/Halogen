@@ -19,16 +19,6 @@ int16_t Network::outputBias = {};
 
 auto calculate_quantization_l1()
 {
-    /*
-    For l1, we have int16_t weights accumulating into int16_t values. We find the maximum possible accumulated
-    value by taking the 32 largest and smallest weights for each hidden neuron. We then figure out the scale
-    to translate these maximum values and minimum values to a range that fits in a int16_t.
-
-    There is one final step, because the activations just fit into int16_t and and the l2 weights also are scaled
-    to fit in a int16_t, the product fits just in a int32_t. This is problematic because we accumulate these int32_t values
-    one for each hidden neuron. In order to adjust for this, we divide all quantization by the sqrt of the hidden neurons.
-    */
-
     auto Data = reinterpret_cast<const float*>(gNetData);
 
     std::array<std::array<float, INPUT_NEURONS>, HIDDEN_NEURONS> quantization_l1_weight;
@@ -51,8 +41,8 @@ auto calculate_quantization_l1()
     {
         for (int j = 0; j < 32; j++)
         {
-            highest[i] = quantization_l1_weight[i][INPUT_NEURONS - 1 - j];
-            lowest[i] = quantization_l1_weight[i][j];
+            highest[i] += quantization_l1_weight[i][INPUT_NEURONS - 1 - j];
+            lowest[i] += quantization_l1_weight[i][j];
         }
     }
 
@@ -64,7 +54,7 @@ auto calculate_quantization_l1()
     std::cout << "min activation: " << min_activation << std::endl;
 #endif
 
-    auto quantization = std::numeric_limits<int16_t>::max() / std::max(std::abs(max_activation), std::abs(min_activation)) / std::sqrt(HIDDEN_NEURONS * 2);
+    auto quantization = std::numeric_limits<int16_t>::max() / std::max(std::abs(max_activation), std::abs(min_activation));
     int16_t limited_quantization = std::pow(2, std::floor(std::log2(quantization)));
 
 #ifndef NDEBUG
@@ -95,7 +85,7 @@ auto calculate_quantization_l2()
     std::cout << "l2 min: " << min << std::endl;
 #endif
 
-    auto quantization = std::numeric_limits<int16_t>::max() / std::max(std::abs(max), std::abs(min)) / std::sqrt(HIDDEN_NEURONS * 2);
+    auto quantization = std::numeric_limits<int16_t>::max() / std::max(std::abs(max), std::abs(min));
     int16_t limited_quantization = std::pow(2, std::floor(std::log2(quantization)));
 
 #ifndef NDEBUG
