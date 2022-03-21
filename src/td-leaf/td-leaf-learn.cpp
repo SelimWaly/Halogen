@@ -26,7 +26,7 @@ constexpr double GAMMA = 1; // discount rate of future rewards
 constexpr int training_nodes = 1000;
 constexpr double sigmoid_coeff = 2.5 / 400.0;
 
-constexpr double training_time_hours = 24;
+constexpr double training_time_hours = 12;
 // -----------------
 
 constexpr int max_threads = 11;
