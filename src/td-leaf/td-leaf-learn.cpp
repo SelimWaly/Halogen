@@ -20,13 +20,13 @@ void SelfPlayGame(TrainableNetwork& network, ThreadSharedData& data);
 void PrintNetworkDiagnostics(TrainableNetwork& network);
 
 // hyperparameters
-constexpr double LAMBDA = 0.5; // credit discount factor
+constexpr double LAMBDA = 0.7; // credit discount factor
 constexpr double GAMMA = 1; // discount rate of future rewards
 
 constexpr int training_nodes = 1000;
 constexpr double sigmoid_coeff = 2.5 / 400.0;
 
-constexpr double training_time_hours = 12;
+constexpr double training_time_hours = 24;
 // -----------------
 
 constexpr int max_threads = 11;
