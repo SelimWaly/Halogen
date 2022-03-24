@@ -71,7 +71,6 @@ void info_thread(TrainableNetwork& network)
         {
             auto duration = std::chrono::duration<float>(now - last_print).count();
 
-            network.PrintNetworkDiagnostics();
             std::cout << "Game " << game_count << std::endl;
             std::cout << "Games per second: " << (game_count - game_count_last) / duration << std::endl;
             std::cout << "Average search depth: " << static_cast<double>(depth_count) / static_cast<double>(move_count) << std::endl;

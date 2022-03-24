@@ -87,6 +87,8 @@ void TrainableNetwork::SaveWeights(const std::string& filename)
 {
     std::lock_guard<std::recursive_mutex> lock(mutex);
 
+    PrintNetworkDiagnostics();
+
     std::ofstream file(filename, std::ios::out | std::ios::binary);
 
     auto save_bias = [&file](auto& layer)
