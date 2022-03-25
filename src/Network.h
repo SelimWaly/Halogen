@@ -7,7 +7,7 @@
 #include "BitBoardDefine.h"
 
 constexpr size_t INPUT_NEURONS = 12 * 64;
-constexpr size_t HIDDEN_NEURONS = 128;
+constexpr size_t HIDDEN_NEURONS = 256;
 
 class Position;
 
