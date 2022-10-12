@@ -193,8 +193,9 @@ bool GameState::CheckForRep(int distanceFromRoot, int maxReps) const
         if (totalRep == 2 && static_cast<int>(previousStates.size() - i) < distanceFromRoot)
             return true; //Don't allow 2 reps if its in the local search history (not part of the actual played game)
 
-        // BUG: if we go two at a time, we might miss a fifty_move_count reset
-        if (previousStates[i].fifty_move_count == 0)
+        // the fifty move count is reset when a irreversible move is made. As such, we can stop here
+        // and know no repitition has taken place. Becuase we move by two at a time, we stop at 0 or 1.
+        if (previousStates[i].fifty_move_count <= 1)
             break;
     }
 
