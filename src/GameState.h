@@ -8,8 +8,8 @@
 #include "BitBoardDefine.h"
 #include "BoardState.h"
 #include "Move.h"
-#include "Network.h"
 #include "Zobrist.h"
+#include "td-leaf/TrainableNetwork.h"
 
 /*
 This class holds all the data required to define a state in a chess game,
@@ -49,7 +49,7 @@ public:
 private:
     BoardState& MutableBoard();
 
-    Network net;
+    HalogenNetwork net;
 
     std::vector<BoardState> previousStates;
 };

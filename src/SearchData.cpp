@@ -303,6 +303,11 @@ void SearchSharedState::ResetNewGame()
 void SearchSharedState::PrintSearchInfo(GameState& position, SearchStackState* ss, const SearchLocalState& local,
     int depth, Score score, SearchInfoType type) const
 {
+    if (silent_mode)
+    {
+        return;
+    }
+
     /*
     Here we avoid excessive use of std::cout and instead append to a string in order
     to output only once at the end. This causes a noticeable speedup for very fast

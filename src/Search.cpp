@@ -105,7 +105,9 @@ void SearchThread(GameState& position, SearchSharedState& shared)
 
     for (int i = 0; i < shared.get_thread_count(); i++)
     {
-        threads.emplace_back(std::thread([position, &shared, i]() mutable { SearchPosition(position, shared, i); }));
+        // Avoid creating redundant short lived threads
+        // threads.emplace_back(std::thread([position, &shared, i]() mutable { SearchPosition(position, shared, i); }));
+        SearchPosition(position, shared, i);
     }
 
     for (size_t i = 0; i < threads.size(); i++)
@@ -116,7 +118,10 @@ void SearchThread(GameState& position, SearchSharedState& shared)
     // restore the MultiPV setting
     shared.multi_pv = multi_pv;
 
-    PrintBestMove(shared.get_best_move(), position.Board(), shared.chess_960);
+    if (!shared.silent_mode)
+    {
+        PrintBestMove(shared.get_best_move(), position.Board(), shared.chess_960);
+    }
 }
 
 void PrintBestMove(Move Best, const BoardState& board, bool chess960)

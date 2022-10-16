@@ -167,6 +167,7 @@ public:
 
     int multi_pv = 0;
     bool chess_960 = false;
+    bool silent_mode = false;
 
     SearchLimits limits;
 
