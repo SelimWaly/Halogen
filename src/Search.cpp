@@ -113,6 +113,8 @@ uint64_t SearchThread(GameState position, ThreadSharedData& sharedData)
 
 void PrintBestMove(Move Best, const BoardState& board, bool chess960)
 {
+    return;
+
     std::cout << "bestmove ";
 
     if (chess960)
