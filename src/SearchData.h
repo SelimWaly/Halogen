@@ -100,6 +100,9 @@ struct SearchParameters
     int threads = 1;
     int multiPV = 0;
     bool chess960 = false;
+
+    // when true, the search function will not print any output
+    bool silent_mode = false;
 };
 
 class ThreadSharedData
@@ -127,6 +130,7 @@ public:
     void SetMultiPv(int multiPv) { param.multiPV = multiPv; }
     void SetThreads(int threads);
     void SetChess960(bool val) { param.chess960 = val; }
+    void SetSilentMode(bool val) { param.silent_mode = val; }
     const SearchParameters& GetParameters() { return param; }
     const SearchLimits& GetLimits() { return limits_; }
 

@@ -57,7 +57,7 @@ std::array<std::vector<int>, N_PLAYERS> TrainableNetwork::GetSparseInputs(const 
     return sparseInputs;
 }
 
-void TrainableNetwork::InitializeWeightsRandomly()
+void TrainableNetwork::InitializeWeightsRandomly(bool print_diagnostics)
 {
     std::lock_guard<std::recursive_mutex> lock(mutex);
 
@@ -80,14 +80,20 @@ void TrainableNetwork::InitializeWeightsRandomly()
     initialize(l1);
     initialize(l2);
 
-    PrintNetworkDiagnostics();
+    if (print_diagnostics)
+    {
+        PrintNetworkDiagnostics();
+    }
 }
 
-void TrainableNetwork::SaveWeights(const std::string& filename)
+void TrainableNetwork::SaveWeights(const std::string& filename, bool print_diagnostics)
 {
     std::lock_guard<std::recursive_mutex> lock(mutex);
 
-    PrintNetworkDiagnostics();
+    if (print_diagnostics)
+    {
+        PrintNetworkDiagnostics();
+    }
 
     std::ofstream file(filename, std::ios::out | std::ios::binary);
 

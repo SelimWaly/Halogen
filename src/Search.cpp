@@ -107,7 +107,10 @@ uint64_t SearchThread(GameState position, ThreadSharedData& sharedData)
         threads[i].join();
     }
 
-    PrintBestMove(sharedData.GetBestMove(), position.Board(), sharedData.GetParameters().chess960);
+    if (!sharedData.GetParameters().silent_mode)
+    {
+        PrintBestMove(sharedData.GetBestMove(), position.Board(), sharedData.GetParameters().chess960);
+    }
     return sharedData.getNodes(); //Used by bench searches. Otherwise is discarded.
 }
 

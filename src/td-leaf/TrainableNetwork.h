@@ -9,8 +9,8 @@ class TrainableNetwork : public HalogenNetwork
 public:
     static std::array<std::vector<int>, N_PLAYERS> GetSparseInputs(const BoardState& position);
 
-    static void InitializeWeightsRandomly();
-    static void SaveWeights(const std::string& filename);
+    static void InitializeWeightsRandomly(bool print_diagnostics = false);
+    static void SaveWeights(const std::string& filename, bool print_diagnostics = false);
     static void PrintNetworkDiagnostics();
     static bool VerifyWeightReadWrite();
 

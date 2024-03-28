@@ -42,8 +42,10 @@ void learn_thread()
 {
     TrainableNetwork network;
     SearchLimits limits;
+    SearchParameters params;
+    params.silent_mode = true;
     limits.SetNodeLimit(training_nodes);
-    ThreadSharedData data(std::move(limits));
+    ThreadSharedData data(std::move(limits), params);
 
     while (!stop_signal)
     {

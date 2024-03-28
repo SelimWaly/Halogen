@@ -205,7 +205,10 @@ SearchData& ThreadSharedData::GetData(unsigned int threadID)
 
 void ThreadSharedData::PrintSearchInfo(unsigned int depth, double Time, bool isCheckmate, int score, int alpha, int beta, GameState& position, const SearchData& locals, bool chess960) const
 {
-    return;
+    if (param.silent_mode)
+    {
+        return;
+    }
 
     /*
 	Here we avoid excessive use of std::cout and instead append to a string in order
