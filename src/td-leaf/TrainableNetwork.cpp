@@ -48,7 +48,7 @@ std::array<std::vector<int>, N_PLAYERS> TrainableNetwork::GetSparseInputs(const 
 
         while (bb)
         {
-            Square sq = static_cast<Square>(LSBpop(bb));
+            Square sq = LSBpop(bb);
             sparseInputs[WHITE].push_back(index(sq, piece, WHITE));
             sparseInputs[BLACK].push_back(index(sq, piece, BLACK));
         }

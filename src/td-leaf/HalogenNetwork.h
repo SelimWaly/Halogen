@@ -2,6 +2,8 @@
 
 #include "../BitBoardDefine.h"
 
+#include <vector>
+
 constexpr std::array architecture = {
     768,
     256,

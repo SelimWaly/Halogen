@@ -18,7 +18,7 @@ void HalogenNetwork::Recalculate(const BoardState& position)
 
         while (bb)
         {
-            Square sq = static_cast<Square>(LSBpop(bb));
+            Square sq = LSBpop(bb);
             AddInput(sq, piece);
         }
     }
