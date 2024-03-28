@@ -31,12 +31,16 @@ uint64_t PerftDivide(unsigned int depth, GameState& position, bool chess960, boo
 uint64_t Perft(unsigned int depth, GameState& position, bool check_legality);
 void Bench(int depth = 14);
 
-string version = "11.4.1";
+string version = "11.4.1_td_leaf_learn_v2.0.0";
 
 int main(int argc, char* argv[])
 {
     PrintVersion();
     tb_init("<empty>");
+    if (!TrainableNetwork::VerifyWeightReadWrite())
+    {
+        return 1;
+    }
 
     string Line; //to read the command given by the GUI
 

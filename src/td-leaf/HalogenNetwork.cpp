@@ -4,6 +4,8 @@
 
 #include "matrix_operations.h"
 
+#include <fstream>
+
 decltype(HalogenNetwork::l1) HalogenNetwork::l1;
 decltype(HalogenNetwork::l2) HalogenNetwork::l2;
 
@@ -79,4 +81,46 @@ int HalogenNetwork::index(Square square, Pieces piece, Players view)
     PieceTypes pieceType = GetPieceType(piece);
 
     return sq + pieceType * 64 + relativeColor * 64 * 6;
+}
+
+void HalogenNetwork::LoadWeights(const std::string &filename)
+{
+    std::ifstream file(filename, std::ios::out | std::ios::binary);
+
+    auto read_bias = [&file](auto& layer)
+    {
+        for (size_t i = 0; i < layer.bias.size(); i++)
+        {
+            file.read(reinterpret_cast<char*>(&layer.bias[i]), sizeof(typename std::decay_t<decltype(layer)>::value_type));
+        }
+    };
+
+    auto read_layer = [&file, &read_bias](auto& layer)
+    {
+        for (size_t i = 0; i < layer.out_count_v; i++)
+        {
+            for (size_t j = 0; j < layer.in_count_v; j++)
+            {
+                file.read(reinterpret_cast<char*>(&layer.weight[i][j]), sizeof(typename std::decay_t<decltype(layer)>::value_type));
+            }
+        }
+
+        read_bias(layer);
+    };
+
+    auto read_transpose_layer = [&file, &read_bias](auto& layer)
+    {
+        for (size_t i = 0; i < layer.out_count_v; i++)
+        {
+            for (size_t j = 0; j < layer.in_count_v; j++)
+            {
+                file.read(reinterpret_cast<char*>(&layer.weight[j][i]), sizeof(typename std::decay_t<decltype(layer)>::value_type));
+            }
+        }
+
+        read_bias(layer);
+    };
+
+    read_transpose_layer(l1);
+    read_layer(l2);
 }

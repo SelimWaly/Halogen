@@ -12,6 +12,7 @@ public:
     static void InitializeWeightsRandomly();
     static void SaveWeights(const std::string& filename);
     static void PrintNetworkDiagnostics();
+    static bool VerifyWeightReadWrite();
 
     void UpdateGradients(double loss_gradient, const std::array<std::vector<int>, N_PLAYERS>& sparse_inputs, Players stm);
     void ApplyOptimizationStep(int n_samples);

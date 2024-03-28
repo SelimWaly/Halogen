@@ -300,3 +300,28 @@ void TrainableNetwork::PrintNetworkDiagnostics()
     print_layer(l1);
     print_layer(l2);
 }
+
+bool TrainableNetwork::VerifyWeightReadWrite()
+{
+    // Randomly initialize the weights, then write to a file, then read, and check we get back what we expected
+    
+    InitializeWeightsRandomly();
+
+    auto l1_copy = l1;
+    auto l2_copy = l2;
+
+    SaveWeights("/tmp/verify_weights.nn");    
+    InitializeWeightsRandomly();
+    LoadWeights("/tmp/verify_weights.nn");
+
+    if (l1_copy == l1 && l2_copy == l2)
+    {
+        std::cout << "Verified reading/writing of network file\n";
+        return true;
+    }
+    else 
+    {
+        std::cout << "Error, verification of reading/writing network file failed\n";
+        return false;
+    }
+}

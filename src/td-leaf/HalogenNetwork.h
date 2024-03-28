@@ -26,6 +26,11 @@ struct TransposeLayer : LayerTraits<T, in_count, out_count>
 {
     std::array<std::array<T, out_count>, in_count> weight;
     std::array<T, out_count> bias;
+
+    constexpr bool operator==(const TransposeLayer<T, in_count, out_count>& other) const
+    {
+        return weight == other.weight && bias == other.bias;
+    }
 };
 
 // when doing matrix/vector multiplications, it's more efficent to have weights[output][input]
@@ -34,6 +39,11 @@ struct Layer : LayerTraits<T, in_count, out_count>
 {
     std::array<std::array<T, in_count>, out_count> weight;
     std::array<T, out_count> bias;
+
+    constexpr bool operator==(const Layer<T, in_count, out_count>& other) const
+    {
+        return weight == other.weight && bias == other.bias;
+    }
 };
 
 // this is the minimum interface required for the rest of Halogen code to accept the network
@@ -53,6 +63,8 @@ public:
 
     // do undo the last move
     void AccumulatorPop();
+
+    static void LoadWeights(const std::string& filename);
 
 protected:
     static int index(Square square, Pieces piece, Players view);
