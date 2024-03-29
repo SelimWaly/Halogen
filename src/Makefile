@@ -40,8 +40,8 @@ DEPS := $(OBJS:.o=.d)
 #----------------------------------------------------------------------------------------------------------------------
 
 WFLAGS = -Wall -Wextra -Wshadow -std=c++17
-CFLAGS = -O3 $(WFLAGS) -DNDEBUG -flto -march=native 
-RFLAGS = -O3 $(WFLAGS) -DNDEBUG -flto
+CFLAGS = -O3 $(WFLAGS) -g -ffast-math -DNDEBUG -flto -march=native 
+RFLAGS = -O3 $(WFLAGS) -g -ffast-math -DNDEBUG -flto
 
 POPCNTFLAGS = -DUSE_POPCNT -msse3 -mpopcnt
 PEXTFLAGS   = $(POPCNTFLAGS) -DUSE_PEXT -mbmi2
