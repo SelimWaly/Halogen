@@ -19,6 +19,8 @@
 void SelfPlayGame(TrainableNetwork& network, ThreadSharedData& data);
 void PrintNetworkDiagnostics(TrainableNetwork& network);
 
+std::string weight_file_name(int epoch, int game);
+
 // hyperparameters
 constexpr double LAMBDA = 0.7; // credit discount factor
 constexpr double GAMMA = 1; // discount rate of future rewards
@@ -54,7 +56,7 @@ void learn_thread()
     }
 }
 
-void info_thread(TrainableNetwork& network)
+void info_thread(TrainableNetwork& network, int epoch)
 {
     std::chrono::steady_clock::time_point start = std::chrono::steady_clock::now();
     std::chrono::steady_clock::time_point last_print = start;
@@ -92,20 +94,20 @@ void info_thread(TrainableNetwork& network)
         if (std::chrono::duration_cast<std::chrono::minutes>(now - last_save).count() >= 15)
         {
             last_save = std::chrono::steady_clock::now();
-            network.SaveWeights("768-" + std::to_string(architecture[1]) + "x2-1_g" + std::to_string(game_count) + ".nn");
+            network.SaveWeights(weight_file_name(epoch, game_count));
         }
 
         if (std::chrono::duration<float>(now - start).count() >= 60.0 * 60.0 * training_time_hours)
         {
             std::cout << "Training complete." << std::endl;
             stop_signal = true;
-            network.SaveWeights("768-" + std::to_string(architecture[1]) + "x2-1_g" + std::to_string(game_count) + ".nn");
+            network.SaveWeights(weight_file_name(epoch, game_count));
             return;
         }
     }
 }
 
-void learn()
+void learn(const std::string initial_weights_file, int epoch)
 {
     if (!TrainableNetwork::VerifyWeightReadWrite())
     {
@@ -113,13 +115,24 @@ void learn()
     }
 
     TrainableNetwork network;
-    network.InitializeWeightsRandomly();
+
+    if (initial_weights_file == "none")
+    {
+        std::cout << "Initializing weights randomly\n"; 
+        network.InitializeWeightsRandomly();
+    }
+    else
+    {
+        std::cout << "Initializing weights from file\n";
+        network.LoadWeights(initial_weights_file);
+    }
+
     // Save the random weights as a baseline
-    network.SaveWeights("768-" + std::to_string(architecture[1]) + "x2-1_g0.nn");
+    network.SaveWeights(weight_file_name(epoch, 0));
 
     std::vector<std::thread> threads;
 
-    threads.emplace_back(info_thread, std::ref(network));
+    threads.emplace_back(info_thread, std::ref(network), epoch);
 
     // always have at least one learning and one info thread.
     // at most we want max_threads total threads.
@@ -295,4 +308,10 @@ void SelfPlayGame(TrainableNetwork& network, ThreadSharedData& data)
     // std::chrono::steady_clock::time_point fn_end = std::chrono::steady_clock::now();
     // auto total_time = std::chrono::duration_cast<std::chrono::nanoseconds>(fn_end - fn_begin).count();
     // std::cout << "Time spend in search: " << static_cast<double>(time_spend_in_search_ns) / static_cast<double>(total_time) * 100 << "%" << std::endl;
+}
+
+std::string weight_file_name(int epoch, int game)
+{
+    // format: 768-512x2-1_e123_g1234567890.nn"
+    return "768-" + std::to_string(architecture[1]) + "x2-1_e" + std::to_string(epoch) + "_g" + std::to_string(game) + ".nn";
 }

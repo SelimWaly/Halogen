@@ -33,7 +33,7 @@ uint64_t PerftDivide(unsigned int depth, GameState& position, bool chess960, boo
 uint64_t Perft(unsigned int depth, GameState& position, bool check_legality);
 void Bench(int depth = 14);
 
-string version = "11.4.1_td_leaf_learn_v2.0.0";
+string version = "11.4.1_td_leaf_learn_v2.1.0";
 
 int main(int argc, char* argv[])
 {
@@ -318,7 +318,11 @@ int main(int argc, char* argv[])
 
         else if (token == "learn")
         {
-            learn();
+            iss >> token; // filename
+            std::string file = token;
+            iss >> token; // epoch
+            int epoch = stoi(token);
+            learn(file, epoch);
         }
 
         else if (token == "load_weights")
