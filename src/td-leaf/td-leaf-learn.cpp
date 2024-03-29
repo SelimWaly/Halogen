@@ -26,10 +26,10 @@ constexpr double GAMMA = 1; // discount rate of future rewards
 constexpr int training_nodes = 1000;
 constexpr double sigmoid_coeff = 2.5 / 400.0;
 
-constexpr double training_time_hours = 24;
+constexpr double training_time_hours = 8;
 // -----------------
 
-constexpr int max_threads = 11;
+constexpr int max_threads = 20;
 
 std::atomic<uint64_t> game_count = 0;
 
@@ -107,8 +107,15 @@ void info_thread(TrainableNetwork& network)
 
 void learn()
 {
+    if (!TrainableNetwork::VerifyWeightReadWrite())
+    {
+        return;
+    }
+
     TrainableNetwork network;
     network.InitializeWeightsRandomly();
+    // Save the random weights as a baseline
+    network.SaveWeights("768-" + std::to_string(architecture[1]) + "x2-1_g0.nn");
 
     std::vector<std::thread> threads;
 

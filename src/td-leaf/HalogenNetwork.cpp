@@ -5,6 +5,9 @@
 #include "matrix_operations.h"
 
 #include <fstream>
+#include <iostream>
+#include <stdexcept>
+#include <string>
 
 decltype(HalogenNetwork::l1) HalogenNetwork::l1;
 decltype(HalogenNetwork::l2) HalogenNetwork::l2;
@@ -87,6 +90,11 @@ void HalogenNetwork::LoadWeights(const std::string &filename)
 {
     std::ifstream file(filename, std::ios::out | std::ios::binary);
 
+    if (!file.is_open())
+    {
+        throw std::invalid_argument("Could not read from weights file. Please check path");
+    }
+
     auto read_bias = [&file](auto& layer)
     {
         for (size_t i = 0; i < layer.bias.size(); i++)
@@ -123,4 +131,17 @@ void HalogenNetwork::LoadWeights(const std::string &filename)
 
     read_transpose_layer(l1);
     read_layer(l2);
+
+    if (file.bad())
+    {    
+        throw std::invalid_argument("I/O error while reading");
+    }
+    else if (file.fail())
+    {    
+        throw std::invalid_argument("Reading failed. Possibly the file was smaller than expected or corrupted");
+    }
+    else if (file.peek() != std::char_traits<char>::eof())
+    {
+        throw std::invalid_argument("Reading failed. Possibly the file was larger than expected or corrupted");
+    }
 }

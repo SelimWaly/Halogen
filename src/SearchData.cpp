@@ -48,6 +48,7 @@ ThreadSharedData::ThreadSharedData(SearchLimits limits, const SearchParameters& 
     SetLimits(std::move(limits));
     SetMultiPv(parameters.multiPV);
     SetThreads(parameters.threads);
+    SetSilentMode(parameters.silent_mode);
 }
 
 void ThreadSharedData::SetLimits(SearchLimits limits)

@@ -6,7 +6,7 @@
 
 constexpr std::array architecture = {
     768,
-    256,
+    512,
     1
 };
 

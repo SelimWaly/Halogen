@@ -21,6 +21,8 @@
 #include "SearchData.h"
 #include "TimeManage.h"
 #include "TranspositionTable.h"
+#include "td-leaf/HalogenNetwork.h"
+#include "td-leaf/TrainableNetwork.h"
 #include "td-leaf/td-leaf-learn.h"
 
 using namespace ::std;
@@ -37,10 +39,6 @@ int main(int argc, char* argv[])
 {
     PrintVersion();
     tb_init("<empty>");
-    if (!TrainableNetwork::VerifyWeightReadWrite())
-    {
-        return 1;
-    }
 
     string Line; //to read the command given by the GUI
 
@@ -321,6 +319,12 @@ int main(int argc, char* argv[])
         else if (token == "learn")
         {
             learn();
+        }
+
+        else if (token == "load_weights")
+        {
+            iss >> token;
+            TrainableNetwork::LoadWeights(token);
         }
 
         //Non uci commands
