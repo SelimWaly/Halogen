@@ -33,7 +33,7 @@ uint64_t PerftDivide(unsigned int depth, GameState& position, bool chess960, boo
 uint64_t Perft(unsigned int depth, GameState& position, bool check_legality);
 void Bench(int depth = 14);
 
-string version = "11.4.1_td_leaf_learn_v2.1.0";
+string version = "11.4.1_td_leaf_learn_v2.2.0";
 
 int main(int argc, char* argv[])
 {
