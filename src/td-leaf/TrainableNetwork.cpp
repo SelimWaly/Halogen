@@ -16,7 +16,7 @@
 
 // apply the adam gradients to the weight layer
 template <template <typename, size_t, size_t> class layer_t, typename T, size_t in, size_t out>
-void apply_gradient(layer_t<T, in, out>& layer, layer_t<TrainableNetwork::adam_state, in, out>& adam, const layer_t<T, in, out>& gradient, int n_samples);
+void apply_gradient(layer_t<T, in, out>& layer, layer_t<TrainableNetwork::adam_state, in, out>& adam, const layer_t<T, in, out>& gradient, int n_samples, uint64_t t);
 
 // given a loss gradient of layer l, and an activation for layer l-1, update the adam states in layer l
 template <typename T, size_t in, size_t out>
@@ -30,6 +30,7 @@ std::array<T, in> calculate_loss_gradient(Layer<T, in, out>& layer, const std::a
 
 decltype(TrainableNetwork::l1_adam) TrainableNetwork::l1_adam;
 decltype(TrainableNetwork::l2_adam) TrainableNetwork::l2_adam;
+uint64_t TrainableNetwork::t = 0;
 
 std::recursive_mutex TrainableNetwork::mutex;
 
@@ -176,8 +177,10 @@ void TrainableNetwork::ApplyOptimizationStep(int n_samples)
 {
     std::lock_guard<std::recursive_mutex> lock(mutex);
 
-    apply_gradient(l1, l1_adam, l1_gradient, n_samples);
-    apply_gradient(l2, l2_adam, l2_gradient, n_samples);
+    t++;
+
+    apply_gradient(l1, l1_adam, l1_gradient, n_samples, t);
+    apply_gradient(l2, l2_adam, l2_gradient, n_samples, t);
 
     // zero out the gradients for the next iteration
     l1_gradient = {};
@@ -185,8 +188,11 @@ void TrainableNetwork::ApplyOptimizationStep(int n_samples)
 }
 
 template <template <typename, size_t, size_t> class layer_t, typename T, size_t in, size_t out>
-void apply_gradient(layer_t<T, in, out>& layer, layer_t<TrainableNetwork::adam_state, in, out>& adam, const layer_t<T, in, out>& gradient, int n_samples)
+void apply_gradient(layer_t<T, in, out>& layer, layer_t<TrainableNetwork::adam_state, in, out>& adam, const layer_t<T, in, out>& gradient, int n_samples, uint64_t t)
 {
+    // bias adjustment
+    auto adj_alpha = TrainableNetwork::adam_state::alpha * std::sqrt(1 - std::pow(TrainableNetwork::adam_state::beta_2, t)) / (1 - std::pow(TrainableNetwork::adam_state::beta_1, t));
+
     for (size_t i = 0; i < layer.weight.size(); i++)
     {
         for (size_t j = 0; j < layer.weight[i].size(); j++)
@@ -199,7 +205,7 @@ void apply_gradient(layer_t<T, in, out>& layer, layer_t<TrainableNetwork::adam_s
             adam.weight[i][j].v = TrainableNetwork::adam_state::beta_2 * adam.weight[i][j].v + (1 - TrainableNetwork::adam_state::beta_2) * g * g;
 
             // update the weights
-            layer.weight[i][j] += -TrainableNetwork::adam_state::alpha * adam.weight[i][j].m / std::sqrt(adam.weight[i][j].v + TrainableNetwork::adam_state::epsilon);
+            layer.weight[i][j] += -adj_alpha * adam.weight[i][j].m / std::sqrt(adam.weight[i][j].v + TrainableNetwork::adam_state::epsilon);
         }
     }
 
@@ -213,7 +219,7 @@ void apply_gradient(layer_t<T, in, out>& layer, layer_t<TrainableNetwork::adam_s
         adam.bias[i].v = TrainableNetwork::adam_state::beta_2 * adam.bias[i].v + (1 - TrainableNetwork::adam_state::beta_2) * g * g;
 
         // update the weights
-        layer.bias[i] += -TrainableNetwork::adam_state::alpha * adam.bias[i].m / std::sqrt(adam.bias[i].v + TrainableNetwork::adam_state::epsilon);
+        layer.bias[i] += -adj_alpha * adam.bias[i].m / std::sqrt(adam.bias[i].v + TrainableNetwork::adam_state::epsilon);
     }
 }
 

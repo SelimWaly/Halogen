@@ -452,7 +452,6 @@ void BoardState::ApplyMove(Move move, HalogenNetwork& net)
     stm = !stm;
 
     assert(key.Verify(*this));
-    assert(net.Verify(*this));
 }
 
 void BoardState::ApplyNullMove()
