@@ -28,7 +28,7 @@ constexpr double GAMMA = 1; // discount rate of future rewards
 constexpr int training_nodes = 1000;
 constexpr double sigmoid_coeff = 2.5 / 400.0;
 
-constexpr double training_time_hours = 8;
+constexpr double training_time_hours = 13;
 // -----------------
 
 constexpr int max_threads = 20;
@@ -165,8 +165,8 @@ void SelfPlayGame(TrainableNetwork& network, ThreadSharedData& data)
     // std::chrono::steady_clock::time_point fn_begin = std::chrono::steady_clock::now();
     // uint64_t time_spend_in_search_ns = 0;
 
-    static std::mt19937 gen(0);
-    static std::binomial_distribution<bool> turn(1);
+    thread_local std::mt19937 gen(0);
+    thread_local std::binomial_distribution<bool> turn(1);
 
     GameState position;
     auto& searchData = data.GetData(0);

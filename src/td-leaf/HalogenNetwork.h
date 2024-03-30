@@ -24,8 +24,8 @@ struct LayerTraits
 template <typename T, size_t in_count, size_t out_count>
 struct TransposeLayer : LayerTraits<T, in_count, out_count>
 {
-    std::array<std::array<T, out_count>, in_count> weight;
-    std::array<T, out_count> bias;
+    alignas(32) std::array<std::array<T, out_count>, in_count> weight;
+    alignas(32) std::array<T, out_count> bias;
 
     constexpr bool operator==(const TransposeLayer<T, in_count, out_count>& other) const
     {
@@ -37,8 +37,8 @@ struct TransposeLayer : LayerTraits<T, in_count, out_count>
 template <typename T, size_t in_count, size_t out_count>
 struct Layer : LayerTraits<T, in_count, out_count>
 {
-    std::array<std::array<T, in_count>, out_count> weight;
-    std::array<T, out_count> bias;
+    alignas(32) std::array<std::array<T, in_count>, out_count> weight;
+    alignas(32) std::array<T, out_count> bias;
 
     constexpr bool operator==(const Layer<T, in_count, out_count>& other) const
     {

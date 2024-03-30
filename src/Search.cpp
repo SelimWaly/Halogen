@@ -99,7 +99,9 @@ uint64_t SearchThread(GameState position, ThreadSharedData& sharedData)
 
     for (int i = 0; i < sharedData.GetParameters().threads; i++)
     {
-        threads.emplace_back(std::thread([=, &sharedData] { SearchPosition(position, sharedData, i); }));
+        // Avoid creating redundant short lived threads
+        //threads.emplace_back(std::thread([=, &sharedData] { SearchPosition(position, sharedData, i); }));
+        SearchPosition(position, sharedData, i);
     }
 
     for (size_t i = 0; i < threads.size(); i++)
