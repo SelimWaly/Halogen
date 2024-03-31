@@ -28,7 +28,7 @@ constexpr double GAMMA = 1; // discount rate of future rewards
 constexpr int training_nodes = 1000;
 constexpr double sigmoid_coeff = 2.5 / 400.0;
 
-constexpr double training_time_hours = 13;
+constexpr double training_time_hours = 16;
 // -----------------
 
 constexpr int max_threads = 20;
@@ -87,8 +87,7 @@ void info_thread(TrainableNetwork& network, int epoch)
             move_count = 0;
             depth_count = 0;
 
-            // cosine annealing
-            TrainableNetwork::adam_state::alpha = (cos(std::chrono::duration<float>(now - start).count() * M_PI / (60.0 * 60.0 * training_time_hours)) + 1.0) / 2.0 * 0.001 * 16;
+            TrainableNetwork::adam_state::alpha = learning_rate_schedule(std::chrono::duration<float>(now - start).count() / (60.0 * 60.0 * training_time_hours));
         }
 
         if (std::chrono::duration_cast<std::chrono::minutes>(now - last_save).count() >= 15)

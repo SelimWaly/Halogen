@@ -30,9 +30,10 @@ std::array<T, in> calculate_loss_gradient(Layer<T, in, out>& layer, const std::a
 
 decltype(TrainableNetwork::l1_adam) TrainableNetwork::l1_adam;
 decltype(TrainableNetwork::l2_adam) TrainableNetwork::l2_adam;
-uint64_t TrainableNetwork::t = 0;
+std::atomic<uint64_t> TrainableNetwork::t = 0;
 
-std::recursive_mutex TrainableNetwork::mutex;
+std::mutex TrainableNetwork::l1_lock;
+std::mutex TrainableNetwork::l2_lock;
 
 std::array<std::vector<int>, N_PLAYERS> TrainableNetwork::GetSparseInputs(const BoardState& position)
 {
@@ -60,7 +61,7 @@ std::array<std::vector<int>, N_PLAYERS> TrainableNetwork::GetSparseInputs(const 
 
 void TrainableNetwork::InitializeWeightsRandomly(bool print_diagnostics)
 {
-    std::lock_guard<std::recursive_mutex> lock(mutex);
+    std::scoped_lock lock {l1_lock, l2_lock};
 
     std::mt19937 gen(0);
 
@@ -89,7 +90,7 @@ void TrainableNetwork::InitializeWeightsRandomly(bool print_diagnostics)
 
 void TrainableNetwork::SaveWeights(const std::string& filename, bool print_diagnostics)
 {
-    std::lock_guard<std::recursive_mutex> lock(mutex);
+    std::scoped_lock lock {l1_lock, l2_lock};
 
     if (print_diagnostics)
     {
@@ -175,12 +176,16 @@ void TrainableNetwork::UpdateGradients(double loss_gradient, const std::array<st
 
 void TrainableNetwork::ApplyOptimizationStep(int n_samples)
 {
-    std::lock_guard<std::recursive_mutex> lock(mutex);
-
     t++;
 
-    apply_gradient(l1, l1_adam, l1_gradient, n_samples, t);
-    apply_gradient(l2, l2_adam, l2_gradient, n_samples, t);
+    {
+        std::scoped_lock lock {l1_lock};
+        apply_gradient(l1, l1_adam, l1_gradient, n_samples, t);
+    }
+    {
+        std::scoped_lock lock {l2_lock};
+        apply_gradient(l2, l2_adam, l2_gradient, n_samples, t);
+    }
 
     // zero out the gradients for the next iteration
     l1_gradient = {};
@@ -284,7 +289,7 @@ std::array<T, in> calculate_loss_gradient(Layer<T, in, out>& layer, const std::a
 
 void TrainableNetwork::PrintNetworkDiagnostics()
 {
-    std::lock_guard<std::recursive_mutex> lock(mutex);
+    std::scoped_lock lock {l1_lock, l2_lock};
 
     auto print_layer = [&](auto&& layer)
     {
