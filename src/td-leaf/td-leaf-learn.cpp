@@ -25,7 +25,7 @@ std::string weight_file_name(int epoch, int game);
 constexpr double LAMBDA = 0.7; // credit discount factor
 constexpr double GAMMA = 1; // discount rate of future rewards
 
-constexpr int training_nodes = 1000;
+constexpr int training_nodes = 2000;
 constexpr double sigmoid_coeff = 2.5 / 400.0;
 
 constexpr double training_time_hours = 16;
