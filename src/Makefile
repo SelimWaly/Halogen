@@ -27,7 +27,8 @@ SRCS := \
 	Pyrrhic/tbprobe.cpp \
 	td-leaf/HalogenNetwork.cpp \
 	td-leaf/td-leaf-learn.cpp \
-	td-leaf/TrainableNetwork.cpp
+	td-leaf/TrainableNetwork.cpp \
+	td-leaf/temporal_coherence.cpp
 
 # String substitution for every C/C++ file.
 # As an example, hello.cpp turns into ./build/hello.cpp.o

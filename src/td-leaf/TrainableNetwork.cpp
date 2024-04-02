@@ -2,6 +2,8 @@
 #include "../BoardState.h"
 #include "HalogenNetwork.h"
 #include "matrix_operations.h"
+#include "training_values.h"
+
 #include <cassert>
 #include <cmath>
 #include <fstream>
@@ -196,7 +198,7 @@ template <template <typename, size_t, size_t> class layer_t, typename T, size_t 
 void apply_gradient(layer_t<T, in, out>& layer, layer_t<TrainableNetwork::adam_state, in, out>& adam, const layer_t<T, in, out>& gradient, int n_samples, uint64_t t)
 {
     // bias adjustment
-    auto adj_alpha = TrainableNetwork::adam_state::alpha * std::sqrt(1 - std::pow(TrainableNetwork::adam_state::beta_2, t)) / (1 - std::pow(TrainableNetwork::adam_state::beta_1, t));
+    auto adj_alpha = lr_alpha * std::sqrt(1 - std::pow(TrainableNetwork::adam_state::beta_2, t)) / (1 - std::pow(TrainableNetwork::adam_state::beta_1, t));
 
     for (size_t i = 0; i < layer.weight.size(); i++)
     {

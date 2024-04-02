@@ -14,6 +14,7 @@
 #include "../SearchData.h"
 #include "HalogenNetwork.h"
 #include "TrainableNetwork.h"
+#include "training_values.h"
 #include "td-leaf-learn.h"
 
 void SelfPlayGame(TrainableNetwork& network, ThreadSharedData& data);
@@ -22,7 +23,6 @@ void PrintNetworkDiagnostics(TrainableNetwork& network);
 std::string weight_file_name(int epoch, int game);
 
 // hyperparameters
-constexpr double LAMBDA = 0.7; // credit discount factor
 constexpr double GAMMA = 1; // discount rate of future rewards
 
 constexpr int training_nodes = 2000;
@@ -74,11 +74,16 @@ void info_thread(TrainableNetwork& network, int epoch)
         if (std::chrono::duration_cast<std::chrono::seconds>(now - last_print).count() >= 10)
         {
             auto duration = std::chrono::duration<float>(now - last_print).count();
+            lr_alpha = learning_rate_schedule(std::chrono::duration<float>(now - start).count() / (60.0 * 60.0 * training_time_hours));
+            td_lambda = prediction_quality_record.fit_psi();
+
+            prediction_quality_record.debug_print();
 
             std::cout << "Game " << game_count << std::endl;
             std::cout << "Games per second: " << (game_count - game_count_last) / duration << std::endl;
             std::cout << "Average search depth: " << static_cast<double>(depth_count) / static_cast<double>(move_count) << std::endl;
-            std::cout << "Learning rate: " << TrainableNetwork::adam_state::alpha << std::endl;
+            std::cout << "Learning rate: " << lr_alpha << std::endl;
+            std::cout << "Lambda: " << td_lambda << std::endl;
             std::cout << std::endl;
             std::cout << std::endl;
 
@@ -86,8 +91,7 @@ void info_thread(TrainableNetwork& network, int epoch)
             game_count_last = game_count;
             move_count = 0;
             depth_count = 0;
-
-            TrainableNetwork::adam_state::alpha = learning_rate_schedule(std::chrono::duration<float>(now - start).count() / (60.0 * 60.0 * training_time_hours));
+            prediction_quality_record.clear();
         }
 
         if (std::chrono::duration_cast<std::chrono::minutes>(now - last_save).count() >= 15)
@@ -271,15 +275,18 @@ void SelfPlayGame(TrainableNetwork& network, ThreadSharedData& data)
 
     int steps_since_update = 0;
 
-    for (size_t t = 0; t < results.size() - 1; t++)
+    for (size_t t = 0; t < results.size(); t++)
     {
         steps_since_update++;
 
         double delta_sum = 0;
 
-        for (size_t j = t; j < results.size() - 1; j++)
+        for (size_t j = t; j < results.size(); j++)
         {
-            delta_sum += results[j].delta * pow(LAMBDA * GAMMA, j - t);
+            delta_sum += results[j].delta * pow(td_lambda * GAMMA, j - t);
+
+            // contribute this td observation to the record
+            prediction_quality_record.add_observation(j - t, results[t].score, results[j].score);
         }
 
         // note derivative of sigmoid with coefficent k is k*(s)*(1-s)
