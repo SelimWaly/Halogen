@@ -247,3 +247,14 @@ BoardState& GameState::MutableBoard()
 {
     return previousStates.back();
 }
+
+void GameState::Print() const
+{
+    // For debug purposes
+    Board().Print();
+    std::cout << "stm: " << Board().stm << std::endl;
+    std::cout << "castle_squares: " << Board().castle_squares << std::endl;
+    std::cout << "en_passant: " << Board().en_passant << std::endl;
+    std::cout << "fifty_move_count: " << Board().fifty_move_count << std::endl;
+    std::cout << "half_turn_count: " << Board().half_turn_count << std::endl;
+}

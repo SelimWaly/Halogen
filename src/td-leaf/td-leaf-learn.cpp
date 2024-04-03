@@ -240,8 +240,26 @@ void SelfPlayGame(TrainableNetwork& network, ThreadSharedData& data)
 
         const auto& pv = searchData.PvTable[0];
 
+        // We can get a longer PV due to search extensions, and a shorter PV due to finding a mate. This needs more thought
+        /*if (pv.size() < data.GetDepth() - 1 
+            // check we don't have a mate score:
+            && data.GetAspirationScore() <= EVAL_MAX && data.GetAspirationScore() >= EVAL_MIN
+            // check we don't have a draw score. Sore false negitives here
+            && (data.GetAspirationScore() > 8 || data.GetAspirationScore() < -7))
+        {
+            std::cout << "Unexpected PV length. Got " << pv.size() << " expected " << data.GetDepth() - 1 << "\n";
+            position.Print();
+            return;
+        }*/
+
         for (size_t i = 0; i < pv.size(); i++)
         {
+            if (!MoveIsLegal(position.Board(), pv[i]))
+            {
+                std::cout << "Illegal move in PV. Printing info:\n";
+                position.Print();
+                return;
+            }
             position.ApplyMove(pv[i]);
         }
 
@@ -262,12 +280,7 @@ void SelfPlayGame(TrainableNetwork& network, ThreadSharedData& data)
         if (turns > 10000)
         {
             std::cout << "Caught unending game. Printing info:\n";
-            position.Board().Print();
-            std::cout << "stm: " << position.Board().stm << std::endl;
-            std::cout << "castle_squares: " << position.Board().castle_squares << std::endl;
-            std::cout << "en_passant: " << position.Board().en_passant << std::endl;
-            std::cout << "fifty_move_count: " << position.Board().fifty_move_count << std::endl;
-            std::cout << "half_turn_count: " << position.Board().half_turn_count << std::endl;
+            position.Print();
             break;
         }
     }

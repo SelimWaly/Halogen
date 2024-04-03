@@ -47,6 +47,8 @@ public:
 
     const BoardState& Board() const;
 
+    void Print() const;
+
 private:
     BoardState& MutableBoard();
 

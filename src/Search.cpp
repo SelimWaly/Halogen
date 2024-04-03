@@ -175,8 +175,12 @@ void SearchPosition(GameState position, ThreadSharedData& sharedData, unsigned i
         if (!sharedData.GetLimits().ShouldContinueSearch())
             sharedData.ReportWantsToStop(threadID);
 
+        // for td learning, it's quite important we get a correct PV for training. In the event that the search aborts we need to return the previous PV
+        FixedVector<Move> pv_copy = {};
+
         try
         {
+            pv_copy = sharedData.GetData(threadID).PvTable[0];
             SearchResult curSearch = AspirationWindowSearch(position, depth, prevScore, sharedData.GetData(threadID), sharedData);
             sharedData.ReportResult(depth, sharedData.GetLimits().ElapsedTime(), curSearch.GetScore(), alpha, beta, position, curSearch.GetMove(), sharedData.GetData(threadID), sharedData.GetParameters().chess960);
             if (sharedData.GetLimits().HitMateLimit(curSearch.GetScore()))
@@ -195,6 +199,7 @@ void SearchPosition(GameState position, ThreadSharedData& sharedData, unsigned i
         }
         catch (NodeLimitAbort&)
         {
+            sharedData.GetData(threadID).PvTable[0] = pv_copy;
             return;
         }
     }
@@ -699,6 +704,8 @@ SearchResult Quiescence(GameState& position, unsigned int initialDepth, int alph
         throw TimeAbort();
     if (initialDepth > 1 && locals.GetThreadNodes() % 1024 == 0 && sharedData.GetLimits().HitTimeLimit())
         throw TimeAbort(); //Am I out of time?
+    if (initialDepth > 1 && locals.GetThreadNodes() % 1024 == 0 && sharedData.GetLimits().HitNodeLimit(locals.GetThreadNodes()))
+       throw NodeLimitAbort();
     if (sharedData.ThreadAbort(initialDepth))
         throw ThreadDepthAbort(); //Has this depth been finished by another thread?
     if (DeadPosition(position.Board()))
