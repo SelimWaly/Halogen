@@ -272,13 +272,12 @@ void SelfPlayGame(TrainableNetwork& network, ThreadSharedData& data)
     }
 
     // main td-leaf update step:
-
-    int steps_since_update = 0;
+    // we accumulate the gradients over the whole game and then apply the optimization step once
+    // this ensures we get an equal proportion of learning from all games rather than more weight on long games.
+    // It also means the batches are quite large, so learning rate might need to be adjusted
 
     for (size_t t = 0; t < results.size(); t++)
     {
-        steps_since_update++;
-
         double delta_sum = 0;
 
         for (size_t j = t; j < results.size(); j++)
@@ -296,18 +295,9 @@ void SelfPlayGame(TrainableNetwork& network, ThreadSharedData& data)
         loss_gradient = results[t].stm == WHITE ? loss_gradient : -loss_gradient;
 
         network.UpdateGradients(loss_gradient, results[t].sparseInputs, results[t].stm);
-
-        if (steps_since_update >= 16)
-        {
-            network.ApplyOptimizationStep(steps_since_update);
-            steps_since_update = 0;
-        }
     }
 
-    if (steps_since_update > 0)
-    {
-        network.ApplyOptimizationStep(steps_since_update);
-    }
+    network.ApplyOptimizationStep(results.size());
 
     // std::cout << "Game result: " << results.back().score << " turns: " << turns << std::endl;
 

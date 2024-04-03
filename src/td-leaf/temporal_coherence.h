@@ -25,7 +25,7 @@ private:
         size_t count = 0;
     };
 
-    std::array<SumWithCount, 512> q_d_sum;
+    std::array<SumWithCount, 64> q_d_sum;
 
     float mse(float psi);
 };
