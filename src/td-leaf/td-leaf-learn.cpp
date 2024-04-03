@@ -25,7 +25,7 @@ std::string weight_file_name(int epoch, int game);
 // hyperparameters
 constexpr double GAMMA = 1; // discount rate of future rewards
 
-constexpr int training_nodes = 2000;
+constexpr int training_nodes = 4000;
 constexpr double sigmoid_coeff = 2.5 / 400.0;
 
 constexpr double training_time_hours = 16;
@@ -258,6 +258,18 @@ void SelfPlayGame(TrainableNetwork& network, ThreadSharedData& data)
         }
 
         position.ApplyMove(data.GetBestMove());
+
+        if (turns > 10000)
+        {
+            std::cout << "Caught unending game. Printing info:\n";
+            position.Board().Print();
+            std::cout << "stm: " << position.Board().stm << std::endl;
+            std::cout << "castle_squares: " << position.Board().castle_squares << std::endl;
+            std::cout << "en_passant: " << position.Board().en_passant << std::endl;
+            std::cout << "fifty_move_count: " << position.Board().fifty_move_count << std::endl;
+            std::cout << "half_turn_count: " << position.Board().half_turn_count << std::endl;
+            break;
+        }
     }
 
     if (results.size() <= 1)

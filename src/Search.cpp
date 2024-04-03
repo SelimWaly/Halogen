@@ -148,6 +148,14 @@ struct ThreadDepthAbort : public std::exception
     }
 };
 
+struct NodeLimitAbort : public std::exception
+{
+    const char* what() const throw()
+    {
+        return "reached node limit";
+    }
+};
+
 void SearchPosition(GameState position, ThreadSharedData& sharedData, unsigned int threadID)
 {
     int alpha = LowINF;
@@ -183,6 +191,10 @@ void SearchPosition(GameState position, ThreadSharedData& sharedData, unsigned i
         catch (TimeAbort&)
         {
             //no time to wait around, return immediately.
+            return;
+        }
+        catch (NodeLimitAbort&)
+        {
             return;
         }
     }
@@ -242,6 +254,8 @@ SearchResult NegaScout(GameState& position, unsigned int initialDepth, int depth
         throw TimeAbort();
     if (initialDepth > 1 && locals.GetThreadNodes() % 1024 == 0 && sharedData.GetLimits().HitTimeLimit())
         throw TimeAbort(); //Am I out of time?
+    if (initialDepth > 1 && locals.GetThreadNodes() % 1024 == 0 && sharedData.GetLimits().HitNodeLimit(locals.GetThreadNodes()))
+        throw NodeLimitAbort();
     if (sharedData.ThreadAbort(initialDepth))
         throw ThreadDepthAbort(); //Has this depth been finished by another thread?
 
