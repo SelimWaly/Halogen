@@ -8,7 +8,7 @@
 inline float learning_rate_schedule(float t)
 {
     // cosine annealing
-    static constexpr float initial_lr = 0.001;
+    static constexpr float initial_lr = 0.003;
     return initial_lr * (cos(t * M_PI) + 1.0) / 2.0;
 }
 

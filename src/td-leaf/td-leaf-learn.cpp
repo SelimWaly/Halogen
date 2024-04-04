@@ -137,9 +137,7 @@ void learn(const std::string initial_weights_file, int epoch)
 
     threads.emplace_back(info_thread, std::ref(network), epoch);
 
-    // always have at least one learning and one info thread.
-    // at most we want max_threads total threads.
-    for (int i = 0; i < std::max(1, max_threads - 1); i++)
+    for (int i = 0; i < max_threads; i++)
     {
         threads.emplace_back(learn_thread);
     }
