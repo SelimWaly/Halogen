@@ -47,8 +47,8 @@ bool CheckForRep(const GameState& position, int distanceFromRoot);
 bool AllowedNull(bool allowedNull, const BoardState& board, Score beta, Score alpha, bool InCheck);
 bool IsEndGame(const BoardState& board);
 bool IsPV(Score beta, Score alpha);
-void AddScoreToTable(Score score, Score alphaOriginal, const BoardState& board, int depthRemaining,
-    int distanceFromRoot, Score beta, Move bestMove);
+void AddScoreToTable(Score score, const BoardState& board, int depthRemaining, int distanceFromRoot, Score alpha,
+    Score beta, Move bestMove);
 void UpdateBounds(const TTEntry& entry, Score& alpha, Score& beta);
 Score TerminalScore(const BoardState& board, int distanceFromRoot);
 int extension(const BoardState& board);
@@ -483,7 +483,7 @@ SearchResult NegaScout(GameState& position, SearchStackState* ss, SearchLocalSta
     // avoid adding scores to the TT when we are aborting the search
     if (!local.aborting_search)
     {
-        AddScoreToTable(score, alpha, position.Board(), depthRemaining, distanceFromRoot, beta, bestMove);
+        AddScoreToTable(score, position.Board(), depthRemaining, distanceFromRoot, alpha, beta, bestMove);
     }
 
     return SearchResult(score, bestMove);
@@ -638,18 +638,24 @@ bool IsPV(Score beta, Score alpha)
     return beta != alpha + 1;
 }
 
-void AddScoreToTable(Score score, Score alphaOriginal, const BoardState& board, int depthRemaining,
-    int distanceFromRoot, Score beta, Move bestMove)
+void AddScoreToTable(Score score, const BoardState& board, int depthRemaining, int distanceFromRoot, Score alpha,
+    Score beta, Move bestMove)
 {
-    if (score <= alphaOriginal)
-        tTable.AddEntry(bestMove, board.GetZobristKey(), score, depthRemaining, board.half_turn_count, distanceFromRoot,
-            EntryType::UPPERBOUND); // mate score adjustent is done inside this function
+    if (score <= alpha)
+    {
+        tTable.AddEntry(bestMove, board.GetZobristKey(), alpha, depthRemaining, board.half_turn_count, distanceFromRoot,
+            EntryType::UPPERBOUND);
+    }
     else if (score >= beta)
-        tTable.AddEntry(bestMove, board.GetZobristKey(), score, depthRemaining, board.half_turn_count, distanceFromRoot,
+    {
+        tTable.AddEntry(bestMove, board.GetZobristKey(), beta, depthRemaining, board.half_turn_count, distanceFromRoot,
             EntryType::LOWERBOUND);
+    }
     else
+    {
         tTable.AddEntry(bestMove, board.GetZobristKey(), score, depthRemaining, board.half_turn_count, distanceFromRoot,
             EntryType::EXACT);
+    }
 }
 
 void UpdateBounds(const TTEntry& entry, Score& alpha, Score& beta)
