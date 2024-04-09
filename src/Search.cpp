@@ -221,7 +221,7 @@ SearchResult AspirationWindowSearch(
         if (result.GetScore() >= beta)
         {
             shared.report_aspiration_high_result(position, ss, local, depth, result);
-            beta = std::min<Score>(Score::Limits::MATE, beta + delta);
+            beta = std::min<Score>(Score::Limits::MATE, result.GetScore() + delta);
         }
 
         delta = delta + delta / 2;
