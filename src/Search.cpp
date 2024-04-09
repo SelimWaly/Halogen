@@ -215,7 +215,7 @@ SearchResult AspirationWindowSearch(
             shared.report_aspiration_low_result(position, ss, local, depth, result);
             // Bring down beta on a fail low
             beta = (alpha + beta) / 2;
-            alpha = std::max<Score>(Score::Limits::MATED, alpha - delta);
+            alpha = std::max<Score>(Score::Limits::MATED, result.GetScore() - delta);
         }
 
         if (result.GetScore() >= beta)
