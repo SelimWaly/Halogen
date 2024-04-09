@@ -63,14 +63,14 @@ std::array<std::vector<int>, N_PLAYERS> TrainableNetwork::GetSparseInputs(const 
 
 void TrainableNetwork::InitializeWeightsRandomly(bool print_diagnostics)
 {
-    std::scoped_lock lock {l1_lock, l2_lock};
+    std::scoped_lock lock { l1_lock, l2_lock };
 
     std::mt19937 gen(0);
 
-    auto initialize = [&gen](auto&& layer)
+    auto initialize = [&gen](auto&& layer, float scale = 1)
     {
         // Kaiming He initialization
-        std::normal_distribution<float> dis(0, sqrt(2.0 / layer.in_count_v));
+        std::normal_distribution<float> dis(0, sqrt(2.0 / layer.in_count_v) * scale);
 
         for (auto& row : layer.weight)
         {
@@ -82,7 +82,7 @@ void TrainableNetwork::InitializeWeightsRandomly(bool print_diagnostics)
     };
 
     initialize(l1);
-    initialize(l2);
+    initialize(l2, 1000);
 
     if (print_diagnostics)
     {
@@ -92,7 +92,7 @@ void TrainableNetwork::InitializeWeightsRandomly(bool print_diagnostics)
 
 void TrainableNetwork::SaveWeights(const std::string& filename, bool print_diagnostics)
 {
-    std::scoped_lock lock {l1_lock, l2_lock};
+    std::scoped_lock lock { l1_lock, l2_lock };
 
     if (print_diagnostics)
     {
@@ -144,7 +144,7 @@ void TrainableNetwork::UpdateGradients(double loss_gradient, const std::array<st
     // do the forward pass and save the activations:
 
     std::array<float, architecture[1] * 2> l1_activation;
-    
+
     std::copy(l1.bias.begin(), l1.bias.end(), l1_activation.begin());
     std::copy(l1.bias.begin(), l1.bias.end(), l1_activation.begin() + architecture[1]);
 
@@ -181,11 +181,11 @@ void TrainableNetwork::ApplyOptimizationStep(int n_samples)
     t++;
 
     {
-        std::scoped_lock lock {l1_lock};
+        std::scoped_lock lock { l1_lock };
         apply_gradient(l1, l1_adam, l1_gradient, n_samples, t);
     }
     {
-        std::scoped_lock lock {l2_lock};
+        std::scoped_lock lock { l2_lock };
         apply_gradient(l2, l2_adam, l2_gradient, n_samples, t);
     }
 
@@ -291,7 +291,7 @@ std::array<T, in> calculate_loss_gradient(Layer<T, in, out>& layer, const std::a
 
 void TrainableNetwork::PrintNetworkDiagnostics()
 {
-    std::scoped_lock lock {l1_lock, l2_lock};
+    std::scoped_lock lock { l1_lock, l2_lock };
 
     auto print_layer = [&](auto&& layer)
     {
@@ -323,13 +323,13 @@ void TrainableNetwork::PrintNetworkDiagnostics()
 bool TrainableNetwork::VerifyWeightReadWrite()
 {
     // Randomly initialize the weights, then write to a file, then read, and check we get back what we expected
-    
+
     InitializeWeightsRandomly();
 
     auto l1_copy = l1;
     auto l2_copy = l2;
 
-    SaveWeights("/tmp/verify_weights.nn");    
+    SaveWeights("/tmp/verify_weights.nn");
     InitializeWeightsRandomly();
     LoadWeights("/tmp/verify_weights.nn");
 
@@ -338,7 +338,7 @@ bool TrainableNetwork::VerifyWeightReadWrite()
         std::cout << "Verified reading/writing of network file\n";
         return true;
     }
-    else 
+    else
     {
         std::cout << "Error, verification of reading/writing network file failed\n";
         return false;

@@ -14,8 +14,8 @@
 #include "../SearchData.h"
 #include "HalogenNetwork.h"
 #include "TrainableNetwork.h"
-#include "training_values.h"
 #include "td-leaf-learn.h"
+#include "training_values.h"
 
 void SelfPlayGame(TrainableNetwork& network, ThreadSharedData& data);
 void PrintNetworkDiagnostics(TrainableNetwork& network);
@@ -25,7 +25,7 @@ std::string weight_file_name(int epoch, int game);
 // hyperparameters
 constexpr double GAMMA = 1; // discount rate of future rewards
 
-constexpr int training_nodes = 4000;
+constexpr int training_nodes = 16000;
 constexpr double sigmoid_coeff = 2.5 / 400.0;
 
 constexpr double training_time_hours = 16;
@@ -100,13 +100,13 @@ void info_thread(TrainableNetwork& network, int epoch)
             network.SaveWeights(weight_file_name(epoch, game_count));
         }
 
-        if (std::chrono::duration<float>(now - start).count() >= 60.0 * 60.0 * training_time_hours)
+        /*if (std::chrono::duration<float>(now - start).count() >= 60.0 * 60.0 * training_time_hours)
         {
             std::cout << "Training complete." << std::endl;
             stop_signal = true;
             network.SaveWeights(weight_file_name(epoch, game_count));
             return;
-        }
+        }*/
     }
 }
 
@@ -121,7 +121,7 @@ void learn(const std::string initial_weights_file, int epoch)
 
     if (initial_weights_file == "none")
     {
-        std::cout << "Initializing weights randomly\n"; 
+        std::cout << "Initializing weights randomly\n";
         network.InitializeWeightsRandomly();
     }
     else
@@ -239,7 +239,7 @@ void SelfPlayGame(TrainableNetwork& network, ThreadSharedData& data)
         const auto& pv = searchData.PvTable[0];
 
         // We can get a longer PV due to search extensions, and a shorter PV due to finding a mate. This needs more thought
-        /*if (pv.size() < data.GetDepth() - 1 
+        /*if (pv.size() < data.GetDepth() - 1
             // check we don't have a mate score:
             && data.GetAspirationScore() <= EVAL_MAX && data.GetAspirationScore() >= EVAL_MIN
             // check we don't have a draw score. Sore false negitives here
