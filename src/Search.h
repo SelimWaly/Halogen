@@ -21,7 +21,7 @@ constexpr int Futility_constant = 20;
 constexpr int Futility_coeff = 82;
 constexpr int Futility_depth = 15;
 
-constexpr Score aspiration_window_mid_width = 15;
+constexpr Score aspiration_window_mid_width = 10;
 
 constexpr int Delta_margin = 200;
 
