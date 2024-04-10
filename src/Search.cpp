@@ -62,8 +62,8 @@ SearchResult UseSearchTBScore(unsigned int result, int distanceFromRoot);
 Move GetTBMove(unsigned int result);
 
 void SearchPosition(GameState& position, SearchSharedState& shared, unsigned int thread_id);
-SearchResult AspirationWindowSearch(
-    GameState& position, SearchStackState* ss, SearchLocalState& local, SearchSharedState& shared, int depth);
+SearchResult AspirationWindowSearch(GameState& position, SearchStackState* ss, SearchLocalState& local,
+    SearchSharedState& shared, int depth, int thread_id);
 SearchResult NegaScout(GameState& position, SearchStackState* ss, SearchLocalState& local, SearchSharedState& shared,
     unsigned int initialDepth, int depthRemaining, Score alpha, Score beta, int colour, unsigned int distanceFromRoot,
     bool allowedNull);
@@ -161,7 +161,7 @@ void SearchPosition(GameState& position, SearchSharedState& shared, unsigned int
             return;
         }
 
-        SearchResult result = AspirationWindowSearch(position, ss, local, shared, depth);
+        SearchResult result = AspirationWindowSearch(position, ss, local, shared, depth, thread_id);
 
         // If we aborted because another thread finished the depth we were on, get that score and continue to that
         // depth.
@@ -186,10 +186,10 @@ void SearchPosition(GameState& position, SearchSharedState& shared, unsigned int
     }
 }
 
-SearchResult AspirationWindowSearch(
-    GameState& position, SearchStackState* ss, SearchLocalState& local, SearchSharedState& shared, int depth)
+SearchResult AspirationWindowSearch(GameState& position, SearchStackState* ss, SearchLocalState& local,
+    SearchSharedState& shared, int depth, int thread_id)
 {
-    Score delta = aspiration_window_mid_width;
+    Score delta = aspiration_window_mid_width + ((thread_id % 2 == 0 ? 1 : -1) * (thread_id % 8));
     Score midpoint = shared.get_best_score();
     Score alpha = std::max<Score>(Score::Limits::MATED, midpoint - delta);
     Score beta = std::min<Score>(Score::Limits::MATE, midpoint + delta);
