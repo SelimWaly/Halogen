@@ -26,20 +26,7 @@
 #include "Zobrist.h"
 
 // [depth][move number]
-const std::array<std::array<int, 64>, 64> LMR_reduction = []
-{
-    std::array<std::array<int, 64>, 64> ret = {};
-
-    for (size_t i = 0; i < ret.size(); i++)
-    {
-        for (size_t j = 0; j < ret[i].size(); j++)
-        {
-            ret[i][j] = static_cast<int>(std::round(LMR_constant + LMR_coeff * log(i + 1) * log(j + 1)));
-        }
-    }
-
-    return ret;
-}();
+std::array<std::array<int, 64>, 64> LMR_reduction;
 
 void PrintBestMove(Move Best, const BoardState& board, bool chess960);
 bool UseTransposition(const TTEntry& entry, Score alpha, Score beta);
@@ -76,6 +63,26 @@ bool should_abort_search(int initial_depth, SearchLocalState& local, const Searc
 
 void SearchThread(GameState& position, SearchSharedState& shared)
 {
+    // ------------------------------------
+    // Setup search for CTT
+
+    LMR_reduction = []
+    {
+        std::array<std::array<int, 64>, 64> ret = {};
+
+        for (size_t i = 0; i < ret.size(); i++)
+        {
+            for (size_t j = 0; j < ret[i].size(); j++)
+            {
+                ret[i][j] = static_cast<int>(std::round(LMR_constant + LMR_depth_coeff * log(i + 1)
+                    + LMR_move_coeff * log(j + 1) + LMR_depth_move_coeff * log(i + 1) * log(j + 1)));
+            }
+        }
+
+        return ret;
+    }();
+
+    // ------------------------------------
     shared.ResetNewSearch();
 
     // Probe TB at root
@@ -406,15 +413,6 @@ SearchResult NegaScout(GameState& position, SearchStackState* ss, SearchLocalSta
 
         seen_moves++;
 
-        if (seen_moves != 1 && move == gen.TTMove())
-        {
-            // StagedMoveGenerator has a bug(?) where if the killer move matches the TT move we will search that move
-            // twice. Trying to remove this duplicate move is an issue because it affects seen_moves, and hence affects
-            // LMP, LMR and other pruning decisions. It is hoped in a future patch we can remove this and retune the
-            // search.
-            continue;
-        }
-
         // late move pruning
         if (depthRemaining < LMP_depth && seen_moves >= LMP_constant + LMP_coeff * depthRemaining
             && score > Score::tb_loss_in(MAX_DEPTH))
@@ -442,8 +440,7 @@ SearchResult NegaScout(GameState& position, SearchStackState* ss, SearchLocalSta
         // late move reductions
         if (seen_moves > 4)
         {
-            // -1 to preserve old behaviour. If we retune LMR we should remove this adjustment
-            int reduction = Reduction(depthRemaining, seen_moves - 1);
+            int reduction = Reduction(depthRemaining, seen_moves);
 
             if (IsPV(beta, alpha))
                 reduction--;

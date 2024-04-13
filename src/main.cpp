@@ -296,6 +296,34 @@ int main(int argc, char* argv[])
                 iss >> token;
                 timeIncCoeffB = stod(token);
             }
+
+            else if (token == "LMR_constant")
+            {
+                iss >> token; //'value'
+                iss >> token;
+                LMR_constant = stod(token);
+            }
+
+            else if (token == "LMR_depth_coeff")
+            {
+                iss >> token; //'value'
+                iss >> token;
+                LMR_depth_coeff = stod(token);
+            }
+
+            else if (token == "LMR_move_coeff")
+            {
+                iss >> token; //'value'
+                iss >> token;
+                LMR_move_coeff = stod(token);
+            }
+
+            else if (token == "LMR_depth_move_coeff")
+            {
+                iss >> token; //'value'
+                iss >> token;
+                LMR_depth_move_coeff = stod(token);
+            }
         }
 
         else if (token == "perft")
