@@ -65,7 +65,9 @@ void HalogenNetwork::RemoveInput(Square square, Pieces piece)
 
 int16_t HalogenNetwork::Eval(Players stm) const
 {
-    auto output = l2.bias[0] + dot_product_halves<decltype(l2)::value_type>(copy_ReLU(AccumulatorStack.back()[stm]), copy_ReLU(AccumulatorStack.back()[!stm]), l2.weight[0]);
+    auto output = l2.bias[0]
+        + dot_product_halves<decltype(l2)::value_type>(
+            copy_ReLU(AccumulatorStack.back()[stm]), copy_ReLU(AccumulatorStack.back()[!stm]), l2.weight[0]);
 
     // 'half' or 'relative' nets return a score relative to the side to move
     // but Halogen expects a score relative to white
@@ -86,20 +88,22 @@ int HalogenNetwork::index(Square square, Pieces piece, Players view)
     return sq + pieceType * 64 + relativeColor * 64 * 6;
 }
 
-void HalogenNetwork::LoadWeights(const std::string &filename)
+void HalogenNetwork::LoadWeights(const std::string& filename)
 {
     std::ifstream file(filename, std::ios::out | std::ios::binary);
 
     if (!file.is_open())
     {
-        throw std::invalid_argument("Could not read from weights file. Please check path");
+        std::cout << "Could not read from weights file. Please check path" << std::endl;
+        return;
     }
 
     auto read_bias = [&file](auto& layer)
     {
         for (size_t i = 0; i < layer.bias.size(); i++)
         {
-            file.read(reinterpret_cast<char*>(&layer.bias[i]), sizeof(typename std::decay_t<decltype(layer)>::value_type));
+            file.read(
+                reinterpret_cast<char*>(&layer.bias[i]), sizeof(typename std::decay_t<decltype(layer)>::value_type));
         }
     };
 
@@ -109,7 +113,8 @@ void HalogenNetwork::LoadWeights(const std::string &filename)
         {
             for (size_t j = 0; j < layer.in_count_v; j++)
             {
-                file.read(reinterpret_cast<char*>(&layer.weight[i][j]), sizeof(typename std::decay_t<decltype(layer)>::value_type));
+                file.read(reinterpret_cast<char*>(&layer.weight[i][j]),
+                    sizeof(typename std::decay_t<decltype(layer)>::value_type));
             }
         }
 
@@ -122,7 +127,8 @@ void HalogenNetwork::LoadWeights(const std::string &filename)
         {
             for (size_t j = 0; j < layer.in_count_v; j++)
             {
-                file.read(reinterpret_cast<char*>(&layer.weight[j][i]), sizeof(typename std::decay_t<decltype(layer)>::value_type));
+                file.read(reinterpret_cast<char*>(&layer.weight[j][i]),
+                    sizeof(typename std::decay_t<decltype(layer)>::value_type));
             }
         }
 
@@ -133,15 +139,18 @@ void HalogenNetwork::LoadWeights(const std::string &filename)
     read_layer(l2);
 
     if (file.bad())
-    {    
-        throw std::invalid_argument("I/O error while reading");
+    {
+        std::cout << "I/O error while reading" << std::endl;
+        return;
     }
     else if (file.fail())
-    {    
-        throw std::invalid_argument("Reading failed. Possibly the file was smaller than expected or corrupted");
+    {
+        std::cout << "Reading failed. Possibly the file was smaller than expected or corrupted" << std::endl;
+        return;
     }
     else if (file.peek() != std::char_traits<char>::eof())
     {
-        throw std::invalid_argument("Reading failed. Possibly the file was larger than expected or corrupted");
+        std::cout << "Reading failed. Possibly the file was larger than expected or corrupted" << std::endl;
+        return;
     }
 }

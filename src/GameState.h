@@ -8,6 +8,7 @@
 #include "BitBoardDefine.h"
 #include "BoardState.h"
 #include "Move.h"
+#include "Score.h"
 #include "Zobrist.h"
 #include "td-leaf/TrainableNetwork.h"
 
