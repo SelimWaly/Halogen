@@ -35,7 +35,7 @@ uint64_t PerftDivide(unsigned int depth, GameState& position, bool chess960, boo
 uint64_t Perft(unsigned int depth, GameState& position, bool check_legality);
 void Bench(int depth = 14);
 
-string version = "11.7.0_td_leaf_learn_3.0.0";
+string version = "11.7.0_td_leaf_learn_3.1.0";
 
 int main(int argc, char* argv[])
 {
@@ -350,6 +350,9 @@ int main(int argc, char* argv[])
             std::string file = token;
             iss >> token; // epoch
             int epoch = stoi(token);
+            iss >> token; // SyzygyPath
+            std::string syzygy_path = token;
+            tb_init(token.c_str());
             learn(file, epoch);
         }
 

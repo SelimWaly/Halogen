@@ -79,17 +79,6 @@ void SearchThread(GameState& position, SearchSharedState& shared)
 {
     shared.ResetNewSearch();
 
-    // Probe TB at root
-    if (GetBitCount(position.Board().GetAllPieces()) <= TB_LARGEST && position.Board().castle_squares == EMPTY)
-    {
-        unsigned int result = ProbeTBRoot(position.Board());
-        if (result != TB_RESULT_FAILED)
-        {
-            PrintBestMove(GetTBMove(result), position.Board(), shared.chess_960);
-            return;
-        }
-    }
-
     // Limit the MultiPV setting to be at most the number of legal moves
     auto multi_pv = shared.multi_pv;
     BasicMoveList moves;
