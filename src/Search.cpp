@@ -424,7 +424,7 @@ SearchResult NegaScout(GameState& position, SearchStackState* ss, SearchLocalSta
         }
 
         // futility pruning
-        if (FutileNode && !IsPV(beta, alpha) && !InCheck && score > Score::tb_loss_in(MAX_DEPTH))
+        if (FutileNode && !InCheck && score > Score::tb_loss_in(MAX_DEPTH))
         {
             gen.SkipQuiets();
             if (gen.GetStage() >= Stage::GIVE_BAD_LOUD)
