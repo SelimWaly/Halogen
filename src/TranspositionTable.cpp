@@ -42,9 +42,12 @@ void TranspositionTable::AddEntry(const Move& best, uint64_t ZobristKey, Score s
         }
 
         // avoid having multiple entries in a bucket for the same position. Only replace if higher depth
-        if (bucket[i].GetKey() == ZobristKey && Depth > bucket[i].GetDepth())
+        if (bucket[i].GetKey() == ZobristKey)
         {
-            bucket[i] = TTEntry(best, ZobristKey, score, Depth, Turncount, distanceFromRoot, Cutoff);
+            if (Depth > bucket[i].GetDepth())
+            {
+                bucket[i] = TTEntry(best, ZobristKey, score, Depth, Turncount, distanceFromRoot, Cutoff);
+            }
             return;
         }
 
