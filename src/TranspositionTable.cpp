@@ -44,15 +44,13 @@ void TranspositionTable::AddEntry(const Move& best, uint64_t ZobristKey, Score s
         // avoid having multiple entries in a bucket for the same position. Only replace if higher depth
         if (bucket[i].GetKey() == ZobristKey)
         {
-            if (Depth > bucket[i].GetDepth())
-            {
-                bucket[i] = TTEntry(best, ZobristKey, score, Depth, Turncount, distanceFromRoot, Cutoff);
-            }
+            bucket[i] = TTEntry(best, ZobristKey, score, Depth, Turncount, distanceFromRoot, Cutoff);
             return;
         }
 
         int8_t age_diff = currentAge - bucket[i].GetAge();
-        scores[i] = bucket[i].GetDepth() - 4 * (age_diff >= 0 ? age_diff : age_diff + HALF_MOVE_MODULO);
+        scores[i] = bucket[i].GetDepth() + 2 * (bucket[i].GetCutoff() == EntryType::EXACT)
+            - 4 * (age_diff >= 0 ? age_diff : age_diff + HALF_MOVE_MODULO);
     }
 
     bucket[std::distance(scores.begin(), std::min_element(scores.begin(), scores.end()))]
