@@ -202,11 +202,13 @@ SearchResult AspirationWindowSearch(
     Score midpoint = shared.get_best_score();
     Score alpha = std::max<Score>(Score::Limits::MATED, midpoint - delta);
     Score beta = std::min<Score>(Score::Limits::MATE, midpoint + delta);
+    int fail_high_count = 0;
 
     while (true)
     {
+        int adj_depth = std::max(1, depth - fail_high_count);
         local.sel_septh = 0;
-        auto result = NegaScout<SearchType::ROOT>(position, ss, local, shared, depth, depth, alpha, beta, 0, false);
+        auto result = NegaScout<SearchType::ROOT>(position, ss, local, shared, depth, adj_depth, alpha, beta, 0, false);
 
         if (local.aborting_search)
         {
@@ -224,12 +226,14 @@ SearchResult AspirationWindowSearch(
             // Bring down beta on a fail low
             beta = (alpha + beta) / 2;
             alpha = std::max<Score>(Score::Limits::MATED, alpha - delta);
+            fail_high_count = 0;
         }
 
         if (result.GetScore() >= beta)
         {
             shared.report_aspiration_high_result(position, ss, local, depth, result);
             beta = std::min<Score>(Score::Limits::MATE, beta + delta);
+            fail_high_count++;
         }
 
         delta = delta + delta / 2;
