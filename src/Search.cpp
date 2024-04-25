@@ -695,6 +695,7 @@ SearchResult Quiescence(GameState& position, SearchStackState* ss, SearchLocalSt
 {
     static_assert(search_type != SearchType::ROOT);
     assert((search_type == SearchType::PV) || (beta == alpha + 1));
+    constexpr bool pv_node = search_type != SearchType::ZW;
 
     // check if we should abort the search
     if (should_abort_search(initialDepth, local, shared))
@@ -718,6 +719,21 @@ SearchResult Quiescence(GameState& position, SearchStackState* ss, SearchLocalSt
     if (staticScore > alpha)
         alpha = staticScore;
 
+    Score original_alpha = alpha;
+
+    // Query the transposition table
+    if (!pv_node)
+    {
+        auto tt_entry = tTable.GetEntryMinDepth(
+            position.Board().GetZobristKey(), depthRemaining, distanceFromRoot, position.Board().half_turn_count);
+        // Don't take scores from the TT if there's a two-fold repitition
+        if (tt_entry.has_value() && !position.CheckForRep(distanceFromRoot, 2)
+            && UseTransposition(tt_entry.value(), alpha, beta))
+        {
+            return SearchResult(tt_entry->GetScore(), tt_entry->GetMove());
+        }
+    }
+
     Move bestmove = Move::Uninitialized;
     auto Score = staticScore;
 
@@ -740,6 +756,7 @@ SearchResult Quiescence(GameState& position, SearchStackState* ss, SearchLocalSt
 
         ss->move = move;
         position.ApplyMove(move);
+        tTable.PreFetch(position.Board().GetZobristKey());
         auto newScore = -Quiescence<search_type>(
             position, ss + 1, local, shared, initialDepth, -beta, -alpha, distanceFromRoot + 1, depthRemaining - 1)
                              .GetScore();
@@ -750,6 +767,12 @@ SearchResult Quiescence(GameState& position, SearchStackState* ss, SearchLocalSt
 
         if (Score >= beta)
             break;
+    }
+
+    // avoid adding scores to the TT when we are aborting the search
+    if (!local.aborting_search)
+    {
+        AddScoreToTable(Score, original_alpha, position.Board(), depthRemaining, distanceFromRoot, beta, bestmove);
     }
 
     return SearchResult(Score, bestmove);
