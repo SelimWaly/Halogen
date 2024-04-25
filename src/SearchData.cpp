@@ -102,6 +102,24 @@ int16_t History::GetCounterMove(const GameState& position, const SearchStackStat
     return (*counterMove)[position.Board().stm][prevPiece][prevMove.GetTo()][currentPiece][move.GetTo()];
 }
 
+bool SearchLocalState::RootExcludeMove(Move move)
+{
+    // if present in blacklist, exclude
+    if (std::find(root_move_blacklist.begin(), root_move_blacklist.end(), move) != root_move_blacklist.end())
+    {
+        return true;
+    }
+
+    // if not present in non-empty white list
+    if (!root_move_whitelist.empty()
+        && std::find(root_move_whitelist.begin(), root_move_whitelist.end(), move) == root_move_whitelist.end())
+    {
+        return true;
+    }
+
+    return false;
+}
+
 void SearchLocalState::ResetNewSearch()
 {
     // We don't reset the history tables because it gains elo to perserve them between turns
@@ -111,6 +129,8 @@ void SearchLocalState::ResetNewSearch()
     sel_septh = 0;
     thread_wants_to_stop = false;
     aborting_search = false;
+    root_move_blacklist = {};
+    root_move_whitelist = {};
 }
 
 void SearchLocalState::ResetNewGame()
@@ -133,8 +153,9 @@ void SearchSharedState::report_search_result(
     GameState& position, SearchStackState* ss, SearchLocalState& local, int depth, SearchResult result)
 {
     std::scoped_lock lock(lock_);
+    auto completed_depth = highest_completed_depth_.load(std::memory_order_acquire);
 
-    if (depth > highest_completed_depth_
+    if (depth > completed_depth
         && std::find(multi_PV_excluded_moves_.begin(), multi_PV_excluded_moves_.end(), result.GetMove())
             == multi_PV_excluded_moves_.end())
     {
@@ -150,8 +171,8 @@ void SearchSharedState::report_search_result(
         {
             search_results_[depth].best_move = result.GetMove();
             search_results_[depth].score = result.GetScore();
-            search_results_[depth].highest_beta = result.GetScore();
-            search_results_[depth].lowest_alpha = result.GetScore();
+            search_results_[depth + 1].highest_beta = result.GetScore();
+            search_results_[depth + 1].lowest_alpha = result.GetScore();
         }
 
         multi_PV_excluded_moves_.push_back(result.GetMove());
@@ -159,7 +180,7 @@ void SearchSharedState::report_search_result(
         // Once we have reported results for multi_pv searches, we continue to the next depth
         if (multi_PV_excluded_moves_.size() >= (unsigned)multi_pv)
         {
-            highest_completed_depth_ = depth;
+            highest_completed_depth_.store(depth, std::memory_order_release);
             multi_PV_excluded_moves_.clear();
         }
     }
@@ -171,8 +192,9 @@ void SearchSharedState::report_aspiration_low_result(
     std::scoped_lock lock(lock_);
 
     auto elapsed_time = limits.ElapsedTime();
+    auto completed_depth = highest_completed_depth_.load(std::memory_order_acquire);
 
-    if (depth == highest_completed_depth_ + 1 && result.GetScore() < search_results_[depth].lowest_alpha)
+    if (depth == completed_depth + 1 && result.GetScore() < search_results_[depth].lowest_alpha)
     {
         if (elapsed_time > 5000)
         {
@@ -188,8 +210,9 @@ void SearchSharedState::report_aspiration_high_result(
     std::scoped_lock lock(lock_);
 
     auto elapsed_time = limits.ElapsedTime();
+    auto completed_depth = highest_completed_depth_.load(std::memory_order_acquire);
 
-    if (depth == highest_completed_depth_ + 1 && result.GetScore() > search_results_[depth].highest_beta)
+    if (depth == completed_depth + 1 && result.GetScore() > search_results_[depth].highest_beta)
     {
         if (elapsed_time > 5000)
         {
@@ -199,21 +222,13 @@ void SearchSharedState::report_aspiration_high_result(
 
         // When we fail high, use set this as the best move for the next depth. This gains elo becuase more often than
         // not a fail high move turns out to be the best.
-        search_results_[highest_completed_depth_ + 1].best_move = result.GetMove();
+        search_results_[completed_depth + 1].best_move = result.GetMove();
     }
-}
-
-bool SearchSharedState::is_multi_PV_excluded_move(Move move)
-{
-    std::scoped_lock lock(lock_);
-
-    return std::find(multi_PV_excluded_moves_.begin(), multi_PV_excluded_moves_.end(), move)
-        != multi_PV_excluded_moves_.end();
 }
 
 bool SearchSharedState::has_completed_depth(int depth) const
 {
-    return highest_completed_depth_ >= depth;
+    return highest_completed_depth_.load(std::memory_order_acquire) >= depth;
 }
 
 void SearchSharedState::report_thread_wants_to_stop(int thread_id)
@@ -232,36 +247,47 @@ void SearchSharedState::report_thread_wants_to_stop(int thread_id)
 
 int SearchSharedState::get_next_search_depth() const
 {
-    return highest_completed_depth_ + 1;
+    return highest_completed_depth_.load(std::memory_order_acquire) + 1;
+}
+
+BasicMoveList SearchSharedState::get_multi_pv_excluded_moves()
+{
+    std::scoped_lock lock(lock_);
+    return multi_PV_excluded_moves_;
 }
 
 Move SearchSharedState::get_best_move() const
 {
+    std::scoped_lock lock(lock_);
+    auto completed_depth = highest_completed_depth_.load(std::memory_order_acquire);
+
     // On a fail high we will report the best move. So we check at depth + 1 and return that if it's been set
-    if (highest_completed_depth_ < MAX_DEPTH - 1
-        && search_results_[highest_completed_depth_ + 1].best_move != Move::Uninitialized)
+    if (search_results_[completed_depth + 1].best_move != Move::Uninitialized)
     {
-        return search_results_[highest_completed_depth_ + 1].best_move;
+        return search_results_[completed_depth + 1].best_move;
     }
 
-    return search_results_[highest_completed_depth_].best_move;
+    return search_results_[completed_depth].best_move;
 }
 
 Score SearchSharedState::get_best_score() const
 {
-    return search_results_[highest_completed_depth_].score;
+    std::scoped_lock lock(lock_);
+    auto completed_depth = highest_completed_depth_.load(std::memory_order_acquire);
+
+    return search_results_[completed_depth].score;
 }
 
 uint64_t SearchSharedState::tb_hits() const
 {
-    return std::accumulate(search_local_states_.begin(), search_local_states_.end(), 0,
-        [](const auto& val, const auto& state) { return val + state.tb_hits; });
+    return std::accumulate(search_local_states_.begin(), search_local_states_.end(), (uint64_t)0,
+        [](const auto& val, const auto& state) { return val + state.tb_hits.load(std::memory_order_relaxed); });
 }
 
 uint64_t SearchSharedState::nodes() const
 {
-    return std::accumulate(search_local_states_.begin(), search_local_states_.end(), 0,
-        [](const auto& val, const auto& state) { return val + state.nodes; });
+    return std::accumulate(search_local_states_.begin(), search_local_states_.end(), (uint64_t)0,
+        [](const auto& val, const auto& state) { return val + state.nodes.load(std::memory_order_relaxed); });
 }
 
 SearchLocalState& SearchSharedState::get_local_state(unsigned int thread_id)

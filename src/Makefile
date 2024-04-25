@@ -28,8 +28,9 @@ SRCS := \
 	TranspositionTable.cpp \
 	TTEntry.cpp \
 	Zobrist.cpp \
-	Pyrrhic/tbprobe.cpp \
-	Score.cpp
+	Score.cpp \
+	EGTB.cpp \
+	Pyrrhic/tbprobe.c
 
 # String substitution for every C/C++ file.
 # As an example, hello.cpp turns into ./build/hello.cpp.o
@@ -65,6 +66,10 @@ ifeq ($(detected_OS),Windows)
     LDFLAGS += -static
 endif
 
+ifeq ($(detected_OS),Linux)
+	CXXFLAGS += -DMADV_RANDOM
+endif
+
 $(info LDFLAGS = [${LDFLAGS}])
 
 # Each target sets particular flags, and then builds the corresponding exe file.
@@ -86,6 +91,12 @@ sanitize: CXXFLAGS += $(WFLAGS) -g -fsanitize=undefined -fsanitize=address
 sanitize: LDFLAGS += -fsanitize=undefined -fsanitize=address
 sanitize: EXE = $(BINARY_DIR)/Halogen-sanitize.exe
 sanitize: binary
+
+.PHONY: sanitize-thread
+sanitize-thread: CXXFLAGS += $(WFLAGS) -g -fsanitize=thread
+sanitize-thread: LDFLAGS += -fsanitize=thread
+sanitize-thread: EXE = $(BINARY_DIR)/Halogen-sanitize-thread.exe
+sanitize-thread: binary
 
 .PHONY: nopopcnt
 nopopcnt: CXXFLAGS += $(RFLAGS)
@@ -153,7 +164,7 @@ binary: $(OBJS)
 	$(CXX) $(OBJS) -o $(EXE) $(LDFLAGS)
 
 # Build step for C++ source
-$(BUILD_DIR)/%.cpp.o: %.cpp net clean_build
+$(BUILD_DIR)/%.o: % net clean_build
 	mkdir -p $(dir $@)
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
