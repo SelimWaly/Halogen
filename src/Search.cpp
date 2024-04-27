@@ -520,7 +520,8 @@ SearchResult NegaScout(GameState& position, SearchStackState* ss, SearchLocalSta
 
             reduction -= history / 8192;
 
-            reduction = std::max(0, reduction);
+            // for PV nodes with good history, we allow a negative reduction
+            reduction = std::max(-1, reduction);
         }
 
         bool full_search = true;
@@ -538,11 +539,14 @@ SearchResult NegaScout(GameState& position, SearchStackState* ss, SearchLocalSta
             }
         }
 
+        // remove any positive reduction
+        reduction = std::clamp(reduction, -1, 0);
+
         // If the reduced depth search was skipped or failed high, we do a full depth zero width search
         if (full_search && (!pv_node || seen_moves > 1))
         {
             search_score = -NegaScout<SearchType::ZW>(position, ss + 1, local, shared, initialDepth,
-                depthRemaining + extensions - 1, -(alpha + 1), -alpha, distanceFromRoot + 1, true)
+                depthRemaining + extensions - 1 - reduction, -(alpha + 1), -alpha, distanceFromRoot + 1, true)
                                 .GetScore();
         }
 
@@ -550,7 +554,7 @@ SearchResult NegaScout(GameState& position, SearchStackState* ss, SearchLocalSta
         if (full_search && pv_node && (seen_moves == 1 || (search_score > alpha && search_score < beta)))
         {
             search_score = -NegaScout<SearchType::PV>(position, ss + 1, local, shared, initialDepth,
-                depthRemaining + extensions - 1, -beta, -alpha, distanceFromRoot + 1, true)
+                depthRemaining + extensions - 1 - reduction, -beta, -alpha, distanceFromRoot + 1, true)
                                 .GetScore();
         }
 
