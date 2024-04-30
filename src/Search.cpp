@@ -502,11 +502,6 @@ SearchResult NegaScout(GameState& position, SearchStackState* ss, SearchLocalSta
         position.ApplyMove(move);
         tTable.PreFetch(position.Board().GetZobristKey()); // load the transposition into l1 cache. ~5% speedup
 
-        if (IsInCheck(position.Board()))
-        {
-            extensions += 1;
-        }
-
         int reduction = 0;
         Score search_score = 0;
 
