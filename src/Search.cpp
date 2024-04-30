@@ -494,6 +494,14 @@ SearchResult NegaScout(GameState& position, SearchStackState* ss, SearchLocalSta
             {
                 return sbeta;
             }
+
+            // Negative extensions: If the TT move isn't singular, but also isn't good enough to multi-cut, it means the
+            // TT move is not very interesting and we reduce the depth in favor of other moves
+
+            else
+            {
+                extensions = -1;
+            }
         }
 
         int history = local.history.Get(position, ss, move);
