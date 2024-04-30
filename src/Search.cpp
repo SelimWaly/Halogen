@@ -459,9 +459,11 @@ SearchResult NegaScout(GameState& position, SearchStackState* ss, SearchLocalSta
         // testing for singularity. To test for singularity, we do a reduced depth search on the TT score lowered by
         // some margin. If this search fails low, this implies all alternative moves are much worse and the TT move
         // is singular.
-        if (!root_node && ss->singular_exclusion == Move::Uninitialized && depthRemaining >= 6 && tt_entry.has_value()
-            && tt_entry->GetDepth() + 2 >= depthRemaining && tt_entry->GetCutoff() != EntryType::UPPERBOUND
-            && tt_entry->GetMove() == move)
+        bool singular_candidate = !root_node && ss->singular_exclusion == Move::Uninitialized && depthRemaining >= 6
+            && tt_entry.has_value() && tt_entry->GetDepth() + 2 >= depthRemaining
+            && tt_entry->GetCutoff() != EntryType::UPPERBOUND && tt_entry->GetMove() == move;
+
+        if (singular_candidate)
         {
             Score sbeta = tt_entry->GetScore() - depthRemaining * 2;
             int sdepth = depthRemaining / 2;
@@ -501,6 +503,11 @@ SearchResult NegaScout(GameState& position, SearchStackState* ss, SearchLocalSta
         ss->move = move;
         position.ApplyMove(move);
         tTable.PreFetch(position.Board().GetZobristKey()); // load the transposition into l1 cache. ~5% speedup
+
+        if (!singular_candidate && IsInCheck(position.Board()))
+        {
+            extensions += 1;
+        }
 
         int reduction = 0;
         Score search_score = 0;
