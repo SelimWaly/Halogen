@@ -473,18 +473,26 @@ SearchResult NegaScout(GameState& position, SearchStackState* ss, SearchLocalSta
 
             ss->singular_exclusion = Move::Uninitialized;
 
-            // Extending the SE idea, if the score is far below sbeta we extend by two. To avoid extending too much down
-            // forced lines we limit the number of multiple_extensions down one line. We focus on non_pv nodes becuase
-            // in particular we want to verify cut nodes which rest on a single good move and ensure we haven't
-            // overlooked a potential non-pv line.
-            if (!pv_node && result.GetScore() < sbeta - 16 && ss->multiple_extensions < 8)
+            if (result.GetScore() < sbeta)
             {
-                extensions += 2;
-                ss->multiple_extensions++;
-            }
-            else if (result.GetScore() < sbeta)
-            {
-                extensions += 1;
+                // Extending the SE idea, if the score is far below sbeta we extend by more than one. To avoid extending
+                // too much down forced lines we limit the number of multiple_extensions down one line. We focus on
+                // non_pv nodes becuase in particular we want to verify cut nodes which rest on a single good move and
+                // ensure we haven't overlooked a potential non-pv line.
+                if (!pv_node && result.GetScore() < sbeta - 32 && ss->multiple_extensions < 6)
+                {
+                    extensions += 3;
+                    ss->multiple_extensions++;
+                }
+                else if (!pv_node && result.GetScore() < sbeta - 16 && ss->multiple_extensions < 8)
+                {
+                    extensions += 2;
+                    ss->multiple_extensions++;
+                }
+                else
+                {
+                    extensions += 1;
+                }
             }
 
             // Multi-Cut: In this case, we have proven that at least one other move appears to fail high, along with
