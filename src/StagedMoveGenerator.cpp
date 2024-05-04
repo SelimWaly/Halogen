@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <array>
+#include <cmath>
 #include <cstddef>
 #include <limits>
 
@@ -139,7 +140,7 @@ void StagedMoveGenerator::AdjustHistory(const Move& move, int positive_adjustmen
         if (m.move == move)
             break;
 
-        local.history.add(position, ss, m.move, negative_adjustment);
+        local.history.add(position, ss, m.move, negative_adjustment / 2);
     }
 }
 
