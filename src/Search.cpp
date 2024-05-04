@@ -523,7 +523,7 @@ SearchResult NegaScout(GameState& position, SearchStackState* ss, SearchLocalSta
             if constexpr (pv_node)
                 reduction--;
 
-            reduction -= history / 12288;
+            reduction -= history / 6144;
 
             reduction = std::max(0, reduction);
         }
