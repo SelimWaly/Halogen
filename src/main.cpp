@@ -294,6 +294,20 @@ int main(int argc, char* argv[])
                 iss >> token;
                 timeIncCoeffB = stod(token);
             }
+
+            else if (token == "History_quotent")
+            {
+                iss >> token; //'value'
+                iss >> token;
+                History_quotent = stoi(token);
+            }
+
+            else if (token == "LMR_constant")
+            {
+                iss >> token; //'value'
+                iss >> token;
+                LMR_constant = stod(token);
+            }
         }
 
         else if (token == "perft")
