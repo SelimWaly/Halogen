@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cmath>
 #include <cstdint>
 
 #include "GameState.h"
@@ -35,6 +36,25 @@ constexpr int LMP_coeff = 7;
 constexpr int LMP_depth = 6;
 
 inline int History_quotent = 8192;
+
+inline auto calculate_LMR_reduction()
+{
+    std::array<std::array<int, 64>, 64> ret = {};
+
+    for (size_t i = 0; i < ret.size(); i++)
+    {
+        for (size_t j = 0; j < ret[i].size(); j++)
+        {
+            ret[i][j] = static_cast<int>(std::round(LMR_constant + LMR_depth_coeff * log(i + 1)
+                + LMR_move_coeff * log(j + 1) + LMR_depth_move_coeff * log(i + 1) * log(j + 1)));
+        }
+    }
+
+    return ret;
+};
+
+// [depth][move number]
+inline std::array<std::array<int, 64>, 64> LMR_reduction = calculate_LMR_reduction();
 
 /*----------------*/
 

@@ -307,6 +307,7 @@ int main(int argc, char* argv[])
                 iss >> token; //'value'
                 iss >> token;
                 LMR_constant = stod(token);
+                LMR_reduction = calculate_LMR_reduction();
             }
         }
 

@@ -33,23 +33,6 @@ enum class SearchType
     ZW,
 };
 
-// [depth][move number]
-const std::array<std::array<int, 64>, 64> LMR_reduction = []
-{
-    std::array<std::array<int, 64>, 64> ret = {};
-
-    for (size_t i = 0; i < ret.size(); i++)
-    {
-        for (size_t j = 0; j < ret[i].size(); j++)
-        {
-            ret[i][j] = static_cast<int>(std::round(LMR_constant + LMR_depth_coeff * log(i + 1)
-                + LMR_move_coeff * log(j + 1) + LMR_depth_move_coeff * log(i + 1) * log(j + 1)));
-        }
-    }
-
-    return ret;
-}();
-
 template <SearchType search_type>
 SearchResult NegaScout(GameState& position, SearchStackState* ss, SearchLocalState& local, SearchSharedState& shared,
     unsigned int initialDepth, int depthRemaining, Score alpha, Score beta, unsigned int distanceFromRoot,
