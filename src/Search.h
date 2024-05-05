@@ -34,7 +34,7 @@ constexpr int LMP_constant = 11;
 constexpr int LMP_coeff = 7;
 constexpr int LMP_depth = 6;
 
-inline int History_quotent = 8192;
+inline int History_quotent = 4096;
 
 /*----------------*/
 
