@@ -18,7 +18,7 @@ int16_t& CountermoveHistory::get(const GameState& position, const SearchStackSta
     const auto& counter = (ss - 1)->move;
     const auto& stm = position.Board().stm;
     const auto curr_piece = GetPieceType(position.Board().GetSquare(move.GetFrom()));
-    const auto counter_piece = GetPieceType(position.Board().GetSquare(counter.GetTo()));
+    const auto counter_piece = GetPieceType((ss - 1)->moved_piece);
 
     return table[stm][counter_piece][counter.GetTo()][curr_piece][move.GetTo()];
 }
@@ -27,6 +27,22 @@ bool CountermoveHistory::valid(const GameState&, const SearchStackState* ss, Mov
 {
     const auto& counter = (ss - 1)->move;
     return counter != Move::Uninitialized;
+}
+
+int16_t& FollowMoveHistory::get(const GameState& position, const SearchStackState* ss, Move move)
+{
+    const auto& follow_move = (ss - 2)->move;
+    const auto& stm = position.Board().stm;
+    const auto curr_piece = GetPieceType(position.Board().GetSquare(move.GetFrom()));
+    const auto follow_piece = GetPieceType((ss - 2)->moved_piece);
+
+    return table[stm][follow_piece][follow_move.GetTo()][curr_piece][move.GetTo()];
+}
+
+bool FollowMoveHistory::valid(const GameState&, const SearchStackState* ss, Move)
+{
+    const auto& follow_move = (ss - 2)->move;
+    return follow_move != Move::Uninitialized;
 }
 
 void History::reset()
