@@ -37,6 +37,7 @@ struct SearchStackState
     std::array<Move, 2> killers = {};
 
     Move move = Move::Uninitialized;
+    Pieces moved_piece = N_PIECES;
     Move singular_exclusion = Move::Uninitialized;
     int multiple_extensions = 0;
 };
@@ -44,14 +45,14 @@ struct SearchStackState
 class SearchStack
 {
 public:
-    // The search accesses [-1, MAX_DEPTH], so the root is [1] and we have MAX_DEPTH+2 elements
+    // The search accesses [ss-2, ss+1]
     SearchStackState* root()
     {
-        return &search_stack_array_[1];
+        return &search_stack_array_[2];
     }
 
 private:
-    std::array<SearchStackState, MAX_DEPTH + 2> search_stack_array_ = {};
+    std::array<SearchStackState, MAX_DEPTH + 3> search_stack_array_ = {};
 };
 
 // Data local to a particular thread

@@ -376,6 +376,7 @@ SearchResult NegaScout(GameState& position, SearchStackState* ss, SearchLocalSta
             + std::min(3, (staticScore.value() - beta.value()) / Null_beta_quotent);
 
         ss->move = Move::Uninitialized;
+        ss->moved_piece = Pieces::N_PIECES;
         position.ApplyNullMove();
         auto null_move_score = -NegaScout<SearchType::ZW>(position, ss + 1, local, shared, initialDepth,
             depthRemaining - reduction - 1, -beta, -beta + 1, distanceFromRoot + 1, false)
@@ -504,6 +505,7 @@ SearchResult NegaScout(GameState& position, SearchStackState* ss, SearchLocalSta
         int history = local.history.get(position, ss, move);
 
         ss->move = move;
+        ss->moved_piece = position.Board().GetSquare(move.GetFrom());
         position.ApplyMove(move);
         tTable.PreFetch(position.Board().GetZobristKey()); // load the transposition into l1 cache. ~5% speedup
 
@@ -745,6 +747,7 @@ SearchResult Quiescence(GameState& position, SearchStackState* ss, SearchLocalSt
             break;
 
         ss->move = move;
+        ss->moved_piece = position.Board().GetSquare(move.GetFrom());
         position.ApplyMove(move);
         auto newScore = -Quiescence<search_type>(
             position, ss + 1, local, shared, initialDepth, -beta, -alpha, distanceFromRoot + 1, depthRemaining - 1)

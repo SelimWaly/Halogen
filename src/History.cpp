@@ -19,9 +19,19 @@ int16_t* CountermoveHistory::get(const GameState& position, const SearchStackSta
 
     const auto& stm = position.Board().stm;
     const auto curr_piece = GetPieceType(position.Board().GetSquare(move.GetFrom()));
-    const auto counter_piece = GetPieceType(position.Board().GetSquare(counter.GetTo()));
+    const auto counter_piece = GetPieceType((ss - 1)->moved_piece);
 
     return &table[stm][counter_piece][counter.GetTo()][curr_piece][move.GetTo()];
+}
+
+int16_t* FollowMoveHistory::get(const GameState& position, const SearchStackState* ss, Move move)
+{
+    const auto& follow_move = (ss - 2)->move;
+    const auto& stm = position.Board().stm;
+    const auto curr_piece = GetPieceType(position.Board().GetSquare(move.GetFrom()));
+    const auto follow_piece = GetPieceType((ss - 2)->moved_piece);
+
+    return &table[stm][follow_piece][follow_move.GetTo()][curr_piece][move.GetTo()];
 }
 
 void History::reset()
@@ -38,7 +48,7 @@ int History::get(const GameState& position, const SearchStackState* ss, Move mov
     };
 
     return std::apply([&](auto&... table) { return (get_value(table) + ...); }, tables_)
-        / std::tuple_size_v<decltype(tables_)>;
+        / (int)std::tuple_size_v<decltype(tables_)>;
 }
 
 void History::add(const GameState& position, const SearchStackState* ss, Move move, int change)
