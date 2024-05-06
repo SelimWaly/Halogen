@@ -508,6 +508,11 @@ SearchResult NegaScout(GameState& position, SearchStackState* ss, SearchLocalSta
             {
                 extensions += -1;
             }
+
+            else if (tt_score <= alpha)
+            {
+                extensions += -1;
+            }
         }
 
         int history = local.history.get(position, ss, move);
