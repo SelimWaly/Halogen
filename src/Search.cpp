@@ -506,7 +506,7 @@ SearchResult NegaScout(GameState& position, SearchStackState* ss, SearchLocalSta
             // move as heavily.
             else if (tt_score >= beta)
             {
-                extensions += -1;
+                extensions += -2;
             }
         }
 
