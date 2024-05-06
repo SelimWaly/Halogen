@@ -8,6 +8,7 @@
 
 #include "BitBoardDefine.h"
 #include "EvalCache.h"
+#include "History.h"
 #include "Move.h"
 #include "MoveList.h"
 #include "Search.h"
@@ -15,6 +16,15 @@
 #include "TimeManage.h"
 #include "TranspositionTable.h"
 #include "Zobrist.h"
+
+#ifdef __cpp_lib_hardware_interference_size
+using std::hardware_constructive_interference_size;
+using std::hardware_destructive_interference_size;
+#else
+// 64 bytes on x86-64 │ L1_CACHE_BYTES │ L1_CACHE_SHIFT │ __cacheline_aligned │ ...
+constexpr std::size_t hardware_constructive_interference_size = 64;
+constexpr std::size_t hardware_destructive_interference_size = 64;
+#endif
 
 extern TranspositionTable tTable;
 
@@ -44,55 +54,9 @@ private:
     std::array<SearchStackState, MAX_DEPTH + 2> search_stack_array_ = {};
 };
 
-class History
-{
-public:
-    History()
-    {
-        Reset();
-    }
-
-    void Reset();
-
-    void Add(const GameState& position, const SearchStackState* ss, Move move, int change);
-    int Get(const GameState& position, const SearchStackState* ss, Move move) const;
-
-private:
-    // Tuneable history constants
-    static constexpr int Butterfly_max = 16384;
-    static constexpr int Butterfly_scale = 32;
-
-    static constexpr int CounterMove_max = 16384;
-    static constexpr int CounterMove_scale = 64;
-
-    void AddButterfly(const GameState& position, Move move, int change);
-    int16_t GetButterfly(const GameState& position, Move move) const;
-
-    void AddCounterMove(const GameState& position, const SearchStackState* ss, Move move, int change);
-    int16_t GetCounterMove(const GameState& position, const SearchStackState* ss, Move move) const;
-
-    void AddHistory(int16_t& val, int change, int max, int scale);
-
-    // [side][from][to]
-    using ButterflyType = std::array<std::array<std::array<int16_t, N_SQUARES>, N_SQUARES>, N_PLAYERS>;
-
-    // [side][prev_piece][prev_to][piece][to]
-    using CounterMoveType = std::array<
-        std::array<std::array<std::array<std::array<int16_t, N_SQUARES>, N_PIECE_TYPES>, N_SQUARES>, N_PIECE_TYPES>,
-        N_PLAYERS>;
-
-    std::unique_ptr<ButterflyType> butterfly;
-    std::unique_ptr<CounterMoveType> counterMove;
-};
-
 // Data local to a particular thread
-struct SearchLocalState
+struct alignas(hardware_destructive_interference_size) SearchLocalState
 {
-    //--------------------------------------------------------------------------------------------
-private:
-    uint64_t padding1[8] = {}; // To avoid false sharing between adjacent SearchData objects
-    //--------------------------------------------------------------------------------------------
-
 public:
     SearchStack search_stack;
 
@@ -121,11 +85,6 @@ public:
 
     void ResetNewSearch();
     void ResetNewGame();
-
-    //--------------------------------------------------------------------------------------------
-private:
-    uint64_t padding2[8] = {}; // To avoid false sharing between adjacent SearchData objects
-    //--------------------------------------------------------------------------------------------
 };
 
 // Search state that is shared between threads.
