@@ -504,7 +504,7 @@ SearchResult NegaScout(GameState& position, SearchStackState* ss, SearchLocalSta
             // might decide to reduce the TT move search. The TT move doesn't have LMR applied, to heuristically this
             // reduction can be thought of as evening out the search depth between the moves and not favouring the TT
             // move as heavily.
-            else if (tt_score >= beta)
+            else if (!pv_node || (alpha <= tt_score && tt_score <= beta))
             {
                 extensions += -1;
             }
