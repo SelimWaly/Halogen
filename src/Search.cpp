@@ -12,11 +12,11 @@
 #include <vector>
 
 #include "BitBoardDefine.h"
+#include "EGTB.h"
 #include "EvalNet.h"
 #include "GameState.h"
 #include "MoveGeneration.h"
 #include "MoveList.h"
-#include "Pyrrhic/tbprobe.h"
 #include "Score.h"
 #include "SearchData.h"
 #include "StagedMoveGenerator.h"
@@ -25,41 +25,45 @@
 #include "TranspositionTable.h"
 #include "Zobrist.h"
 
+enum class SearchType
+{
+    ROOT,
+    PV,
+    ZW,
+};
+
 // [depth][move number]
 std::array<std::array<int, 64>, 64> LMR_reduction;
 
+template <SearchType search_type>
+SearchResult NegaScout(GameState& position, SearchStackState* ss, SearchLocalState& local, SearchSharedState& shared,
+    int depth, Score alpha, Score beta, bool allowedNull);
+
+template <SearchType search_type>
+SearchResult Quiescence(GameState& position, SearchStackState* ss, SearchLocalState& local, SearchSharedState& shared,
+    int depth, Score alpha, Score beta);
+
 void PrintBestMove(Move Best, const BoardState& board, bool chess960);
-bool UseTransposition(const TTEntry& entry, Score alpha, Score beta);
+bool UseTransposition(Score tt_score, EntryType cutoff, Score alpha, Score beta);
 bool CheckForRep(const GameState& position, int distanceFromRoot);
-bool AllowedNull(bool allowedNull, const BoardState& board, Score beta, Score alpha, bool InCheck);
+bool AllowedNull(bool allowedNull, const BoardState& board, bool InCheck);
 bool IsEndGame(const BoardState& board);
-bool IsPV(Score beta, Score alpha);
 void AddScoreToTable(Score score, Score alphaOriginal, const BoardState& board, int depthRemaining,
     int distanceFromRoot, Score beta, Move bestMove);
-void UpdateBounds(const TTEntry& entry, Score& alpha, Score& beta);
 Score TerminalScore(const BoardState& board, int distanceFromRoot);
 int extension(const BoardState& board);
 void AddKiller(Move move, std::array<Move, 2>& KillerMoves);
 void AddHistory(const StagedMoveGenerator& gen, const Move& move, int depthRemaining);
 void UpdatePV(Move move, SearchStackState* ss);
 int Reduction(int depth, int i);
-unsigned int ProbeTBRoot(const BoardState& board);
-unsigned int ProbeTBSearch(const BoardState& board);
-SearchResult UseSearchTBScore(unsigned int result, int distanceFromRoot);
-Move GetTBMove(unsigned int result);
 
 void SearchPosition(GameState& position, SearchSharedState& shared, unsigned int thread_id);
 SearchResult AspirationWindowSearch(
     GameState& position, SearchStackState* ss, SearchLocalState& local, SearchSharedState& shared, int depth);
-SearchResult NegaScout(GameState& position, SearchStackState* ss, SearchLocalState& local, SearchSharedState& shared,
-    unsigned int initialDepth, int depthRemaining, Score alpha, Score beta, int colour, unsigned int distanceFromRoot,
-    bool allowedNull);
 void UpdateAlpha(Score score, Score& a, const Move& move, SearchStackState* ss);
 void UpdateScore(Score newScore, Score& score, Move& bestMove, const Move& move);
-SearchResult Quiescence(GameState& position, SearchStackState* ss, SearchLocalState& local, SearchSharedState& shared,
-    unsigned int initialDepth, Score alpha, Score beta, int colour, unsigned int distanceFromRoot, int depthRemaining);
 
-bool should_abort_search(int initial_depth, SearchLocalState& local, const SearchSharedState& shared);
+bool should_abort_search(SearchLocalState& local, const SearchSharedState& shared);
 
 void SearchThread(GameState& position, SearchSharedState& shared)
 {
@@ -86,14 +90,11 @@ void SearchThread(GameState& position, SearchSharedState& shared)
     shared.ResetNewSearch();
 
     // Probe TB at root
-    if (GetBitCount(position.Board().GetAllPieces()) <= TB_LARGEST && position.Board().castle_squares == EMPTY)
+    auto probe = Syzygy::probe_dtz_root(position.Board());
+    BasicMoveList root_move_whitelist;
+    if (probe.has_value())
     {
-        unsigned int result = ProbeTBRoot(position.Board());
-        if (result != TB_RESULT_FAILED)
-        {
-            PrintBestMove(GetTBMove(result), position.Board(), shared.chess_960);
-            return;
-        }
+        root_move_whitelist = probe->root_move_whitelist;
     }
 
     // Limit the MultiPV setting to be at most the number of legal moves
@@ -111,6 +112,7 @@ void SearchThread(GameState& position, SearchSharedState& shared)
 
     for (int i = 0; i < shared.get_thread_count(); i++)
     {
+        shared.get_local_state(i).root_move_whitelist = root_move_whitelist;
         threads.emplace_back(std::thread([position, &shared, i]() mutable { SearchPosition(position, shared, i); }));
     }
 
@@ -168,6 +170,9 @@ void SearchPosition(GameState& position, SearchSharedState& shared, unsigned int
             return;
         }
 
+        // copy the MultiPV exclusion
+        local.root_move_blacklist = shared.get_multi_pv_excluded_moves();
+        local.search_depth = depth;
         SearchResult result = AspirationWindowSearch(position, ss, local, shared, depth);
 
         // If we aborted because another thread finished the depth we were on, get that score and continue to that
@@ -204,8 +209,7 @@ SearchResult AspirationWindowSearch(
     while (true)
     {
         local.sel_septh = 0;
-        auto result = NegaScout(
-            position, ss, local, shared, depth, depth, alpha, beta, position.Board().stm ? 1 : -1, 0, false);
+        auto result = NegaScout<SearchType::ROOT>(position, ss, local, shared, depth, alpha, beta, false);
 
         if (local.aborting_search)
         {
@@ -235,27 +239,35 @@ SearchResult AspirationWindowSearch(
     }
 }
 
+template <SearchType search_type>
 SearchResult NegaScout(GameState& position, SearchStackState* ss, SearchLocalState& local, SearchSharedState& shared,
-    unsigned int initialDepth, int depthRemaining, Score alpha, Score beta, int colour, unsigned int distanceFromRoot,
-    bool allowedNull)
+    int depth, Score alpha, Score beta, bool allowedNull)
 {
+    assert((search_type != SearchType::ROOT) || (ss->distance_from_root == 0));
+    assert((search_type != SearchType::ZW) || (beta == alpha + 1));
+    constexpr bool pv_node = search_type != SearchType::ZW;
+    constexpr bool root_node = search_type == SearchType::ROOT;
+
+    const auto distance_from_root = ss->distance_from_root;
+
     // check if we should abort the search
-    if (should_abort_search(initialDepth, local, shared))
+    if (should_abort_search(local, shared))
     {
         return SCORE_UNDEFINED;
     }
 
-    local.sel_septh = std::max<int>(local.sel_septh, distanceFromRoot);
+    local.sel_septh = std::max<int>(local.sel_septh, distance_from_root);
     local.nodes.fetch_add(1, std::memory_order_relaxed);
 
-    if (distanceFromRoot >= MAX_DEPTH)
+    if (distance_from_root >= MAX_DEPTH)
         return 0; // Have we reached max depth?
 
     ss->pv.clear();
+    ss->multiple_extensions = (ss - 1)->multiple_extensions;
 
     if (DeadPosition(position.Board()))
         return 0; // Is this position a dead draw?
-    if (CheckForRep(position, distanceFromRoot) // Have we had a draw by repitition?
+    if (CheckForRep(position, distance_from_root) // Have we had a draw by repitition?
         || position.Board().fifty_move_count
             > 100) // cannot use >= as it could currently be checkmate which would count as a win
         return 8
@@ -264,25 +276,29 @@ SearchResult NegaScout(GameState& position, SearchStackState* ss, SearchLocalSta
                            // with permission from Koivisto authors.
 
     auto score = std::numeric_limits<Score>::min();
-    auto MaxScore = std::numeric_limits<Score>::max();
+    auto max_score = std::numeric_limits<Score>::max();
+    auto min_score = std::numeric_limits<Score>::min();
+
+    // If we are in a singular move search, we don't want to do any early pruning.
 
     // Probe TB in search
-    if (position.Board().fifty_move_count == 0 && GetBitCount(position.Board().GetAllPieces()) <= TB_LARGEST
-        && position.Board().castle_squares == EMPTY)
+    if (ss->singular_exclusion == Move::Uninitialized)
     {
-        unsigned int result = ProbeTBSearch(position.Board());
-        if (result != TB_RESULT_FAILED)
+        auto probe = Syzygy::probe_wdl_search(position.Board());
+        if (probe.has_value())
         {
             local.tb_hits.fetch_add(1, std::memory_order_relaxed);
-            auto probe = UseSearchTBScore(result, distanceFromRoot);
+            const auto tb_score = probe->get_score(distance_from_root);
 
-            // TODO: check for boundary conditions
-            if (probe.GetScore() == 0)
-                return probe;
-            if (probe.GetScore() >= Score::tb_win_in(MAX_DEPTH) && probe.GetScore() >= beta)
-                return probe;
-            if (probe.GetScore() <= Score::tb_loss_in(MAX_DEPTH) && probe.GetScore() <= alpha)
-                return probe;
+            if (!root_node)
+            {
+                if (tb_score == 0)
+                    return tb_score;
+                if (tb_score >= Score::tb_win_in(MAX_DEPTH) && tb_score >= beta)
+                    return tb_score;
+                if (tb_score <= Score::tb_loss_in(MAX_DEPTH) && tb_score <= alpha)
+                    return tb_score;
+            }
 
             // Why update score ?
             // Because in a PV node we want the returned score to be accurate and reflect the TB score.
@@ -304,71 +320,79 @@ SearchResult NegaScout(GameState& position, SearchStackState* ss, SearchLocalSta
             // Because if we had a tb-win and the score < beta, then it must also be <= alpha remembering we are in a
             // zero width search and beta = alpha + 1.
 
-            if (IsPV(beta, alpha))
+            if constexpr (pv_node)
             {
-                if (probe.GetScore() >= Score::tb_win_in(MAX_DEPTH))
+                if (tb_score >= Score::tb_win_in(MAX_DEPTH))
                 {
-                    score = probe.GetScore();
-                    alpha = std::max(alpha, probe.GetScore());
+                    min_score = tb_score;
+                    alpha = std::max(alpha, tb_score);
                 }
                 else
                 {
-                    MaxScore = probe.GetScore();
+                    max_score = tb_score;
                 }
             }
         }
     }
 
-    // Query the transpotition table
-    if (!IsPV(beta, alpha))
+    // copy the values out of the table that we want, to avoid race conditions
+    auto tt_entry
+        = tTable.GetEntry(position.Board().GetZobristKey(), distance_from_root, position.Board().half_turn_count);
+    const auto tt_score = tt_entry
+        ? convert_from_tt_score(tt_entry->score.load(std::memory_order_relaxed), distance_from_root)
+        : SCORE_UNDEFINED;
+    const auto tt_depth = tt_entry ? tt_entry->depth.load(std::memory_order_relaxed) : 0;
+    const auto tt_cutoff = tt_entry ? tt_entry->cutoff.load(std::memory_order_relaxed) : EntryType::EMPTY_ENTRY;
+    const auto tt_move = tt_entry ? tt_entry->move.load(std::memory_order_relaxed) : Move::Uninitialized;
+
+    // Check if we can abort early and return this tt_entry score
+    if (!pv_node && ss->singular_exclusion == Move::Uninitialized)
     {
-        auto entry = tTable.GetEntryMinDepth(
-            position.Board().GetZobristKey(), depthRemaining, distanceFromRoot, position.Board().half_turn_count);
-        if (entry.has_value())
+        if (tt_entry && tt_depth >= depth)
         {
             // Don't take scores from the TT if there's a two-fold repitition
-            if (!position.CheckForRep(distanceFromRoot, 2) && UseTransposition(entry.value(), alpha, beta))
-                return SearchResult(entry->GetScore(), entry->GetMove());
+            if (!position.CheckForRep(distance_from_root, 2) && UseTransposition(tt_score, tt_cutoff, alpha, beta))
+                return SearchResult(tt_score, tt_move);
         }
     }
 
     bool InCheck = IsInCheck(position.Board());
 
     // Drop into quiescence search
-    if (depthRemaining <= 0 && !InCheck)
+    if (depth <= 0 && !InCheck)
     {
-        return Quiescence(
-            position, ss, local, shared, initialDepth, alpha, beta, colour, distanceFromRoot, depthRemaining);
+        constexpr SearchType qsearch_type = pv_node ? SearchType::PV : SearchType::ZW;
+        return Quiescence<qsearch_type>(position, ss, local, shared, depth, alpha, beta);
     }
 
-    auto staticScore = EvaluatePositionNet(position, local.eval_cache) * colour;
+    auto staticScore = EvaluatePositionNet(position, local.eval_cache);
 
     // Static null move pruning
-    if (depthRemaining < SNMP_depth && staticScore - SNMP_coeff * depthRemaining >= beta && !InCheck
-        && !IsPV(beta, alpha))
+    if (!pv_node && ss->singular_exclusion == Move::Uninitialized && depth < SNMP_depth
+        && staticScore - SNMP_coeff * depth >= beta && !InCheck)
         return beta;
 
     // Null move pruning
-    if (AllowedNull(allowedNull, position.Board(), beta, alpha, InCheck) && (staticScore > beta))
+    if (!pv_node && ss->singular_exclusion == Move::Uninitialized && AllowedNull(allowedNull, position.Board(), InCheck)
+        && (staticScore > beta))
     {
-        unsigned int reduction = Null_constant + depthRemaining / Null_depth_quotent
+        unsigned int reduction = Null_constant + depth / Null_depth_quotent
             + std::min(3, (staticScore.value() - beta.value()) / Null_beta_quotent);
 
         ss->move = Move::Uninitialized;
         position.ApplyNullMove();
-        auto null_move_score = -NegaScout(position, ss + 1, local, shared, initialDepth, depthRemaining - reduction - 1,
-            -beta, -beta + 1, -colour, distanceFromRoot + 1, false)
+        auto null_move_score = -NegaScout<SearchType::ZW>(
+            position, ss + 1, local, shared, depth - reduction - 1, -beta, -beta + 1, false)
                                     .GetScore();
         position.RevertNullMove();
 
         if (null_move_score >= beta)
         {
-            if (beta < Score::mated_in(MAX_DEPTH)
-                || depthRemaining >= 10) // TODO: I'm not sure about this first condition
+            if (beta < Score::mated_in(MAX_DEPTH) || depth >= 10) // TODO: I'm not sure about this first condition
             {
                 // Do verification search for high depths
-                SearchResult result = NegaScout(position, ss, local, shared, initialDepth,
-                    depthRemaining - reduction - 1, beta - 1, beta, colour, distanceFromRoot, false);
+                SearchResult result = NegaScout<SearchType::ZW>(
+                    position, ss, local, shared, depth - reduction - 1, beta - 1, beta, false);
                 if (result.GetScore() >= beta)
                     return result;
             }
@@ -380,33 +404,36 @@ SearchResult NegaScout(GameState& position, SearchStackState* ss, SearchLocalSta
     }
 
     // mate distance pruning
-    alpha = std::max(Score::mated_in(distanceFromRoot), alpha);
-    beta = std::min(Score::mate_in(distanceFromRoot), beta);
+    alpha = std::max(Score::mated_in(distance_from_root), alpha);
+    beta = std::min(Score::mate_in(distance_from_root), beta);
     if (alpha >= beta)
         return alpha;
 
     // Set up search variables
     Move bestMove = Move::Uninitialized;
-    auto a = alpha;
-    auto b = beta;
+    auto original_alpha = alpha;
     int seen_moves = 0;
     bool noLegalMoves = true;
 
     // Rebel style IID. Don't ask why this helps but it does.
-    if (GetHashMove(position.Board(), distanceFromRoot) == Move::Uninitialized && depthRemaining > 3)
-        depthRemaining--;
+    if (!tt_entry && depth > 3)
+        depth--;
 
-    bool FutileNode
-        = depthRemaining < Futility_depth && staticScore + Futility_constant + Futility_coeff * depthRemaining < a;
+    bool FutileNode = depth < Futility_depth && staticScore + Futility_constant + Futility_coeff * depth < alpha;
 
-    StagedMoveGenerator gen(position, ss, local, distanceFromRoot, false);
+    StagedMoveGenerator gen(position, ss, local, tt_move, false);
     Move move;
 
     while (gen.Next(move))
     {
         noLegalMoves = false;
 
-        if (distanceFromRoot == 0 && shared.is_multi_PV_excluded_move(move))
+        if (move == ss->singular_exclusion)
+        {
+            continue;
+        }
+
+        if (root_node && local.RootExcludeMove(move))
         {
             continue;
         }
@@ -414,14 +441,13 @@ SearchResult NegaScout(GameState& position, SearchStackState* ss, SearchLocalSta
         seen_moves++;
 
         // late move pruning
-        if (depthRemaining < LMP_depth && seen_moves >= LMP_constant + LMP_coeff * depthRemaining
-            && score > Score::tb_loss_in(MAX_DEPTH))
+        if (depth < LMP_depth && seen_moves >= LMP_constant + LMP_coeff * depth && score > Score::tb_loss_in(MAX_DEPTH))
         {
             gen.SkipQuiets();
         }
 
         // futility pruning
-        if (FutileNode && !IsPV(beta, alpha) && !InCheck && score > Score::tb_loss_in(MAX_DEPTH))
+        if (!pv_node && FutileNode && !InCheck && score > Score::tb_loss_in(MAX_DEPTH))
         {
             gen.SkipQuiets();
             if (gen.GetStage() >= Stage::GIVE_BAD_LOUD)
@@ -430,147 +456,148 @@ SearchResult NegaScout(GameState& position, SearchStackState* ss, SearchLocalSta
             }
         }
 
-        int history = local.history.Get(position, ss, move);
+        int extensions = 0;
+
+        // Singular extensions.
+        //
+        // If one move is significantly better than all alternatives, we extend the search for that
+        // critical move. When looking for potentially singular moves, we look for TT moves at sufficient depth with
+        // an exact or lower-bound cutoff. We also avoid testing for singular moves at the root or when already
+        // testing for singularity. To test for singularity, we do a reduced depth search on the TT score lowered by
+        // some margin. If this search fails low, this implies all alternative moves are much worse and the TT move
+        // is singular.
+        if (!root_node && ss->singular_exclusion == Move::Uninitialized && depth >= 6 && tt_entry
+            && tt_depth + 2 >= depth && tt_cutoff != EntryType::UPPERBOUND && tt_move == move)
+        {
+            Score sbeta = tt_score - depth * 2;
+            int sdepth = depth / 2;
+
+            ss->singular_exclusion = move;
+
+            auto result = NegaScout<SearchType::ZW>(position, ss, local, shared, sdepth, sbeta - 1, sbeta, true);
+
+            ss->singular_exclusion = Move::Uninitialized;
+
+            // Extending the SE idea, if the score is far below sbeta we extend by two. To avoid extending too much down
+            // forced lines we limit the number of multiple_extensions down one line. We focus on non_pv nodes becuase
+            // in particular we want to verify cut nodes which rest on a single good move and ensure we haven't
+            // overlooked a potential non-pv line.
+            if (!pv_node && result.GetScore() < sbeta - 16 && ss->multiple_extensions < 8)
+            {
+                extensions += 2;
+                ss->multiple_extensions++;
+            }
+            else if (result.GetScore() < sbeta)
+            {
+                extensions += 1;
+            }
+
+            // Multi-Cut: In this case, we have proven that at least one other move appears to fail high, along with
+            // the TT move having a LOWER_BOUND score of significantly above beta. In this case, we can assume the node
+            // will fail high and we return a soft bound.
+            else if (sbeta >= beta)
+            {
+                return sbeta;
+            }
+
+            // Negative extensions: if the TT move is not singular, but also doesn't appear good enough to multi-cut, we
+            // might decide to reduce the TT move search. The TT move doesn't have LMR applied, to heuristically this
+            // reduction can be thought of as evening out the search depth between the moves and not favouring the TT
+            // move as heavily.
+            else if (tt_score >= beta)
+            {
+                extensions += -1;
+            }
+        }
+
+        int history = local.history.get(position, ss, move);
 
         ss->move = move;
         position.ApplyMove(move);
         tTable.PreFetch(position.Board().GetZobristKey()); // load the transposition into l1 cache. ~5% speedup
-        int extendedDepth = depthRemaining + extension(position.Board());
+
+        if (IsInCheck(position.Board()))
+        {
+            extensions += 1;
+        }
+
+        int reduction = 0;
+        Score search_score = 0;
 
         // late move reductions
-        if (seen_moves > 4)
+        if (seen_moves > 3)
         {
-            int reduction = Reduction(depthRemaining, seen_moves);
+            reduction = Reduction(depth, seen_moves);
 
-            if (IsPV(beta, alpha))
+            if constexpr (pv_node)
                 reduction--;
 
-            reduction -= history / 8192;
+            reduction -= history / 4096;
 
             reduction = std::max(0, reduction);
+        }
 
-            auto late_move_score = -NegaScout(position, ss + 1, local, shared, initialDepth,
-                extendedDepth - 1 - reduction, -a - 1, -a, -colour, distanceFromRoot + 1, true)
-                                        .GetScore();
+        const int new_depth = depth + extensions - 1;
+        bool full_search = true;
 
-            if (late_move_score <= a)
+        // If we are reducing, we do a zero width reduced depth search
+        if (reduction > 0)
+        {
+            search_score = -NegaScout<SearchType::ZW>(
+                position, ss + 1, local, shared, new_depth - reduction, -(alpha + 1), -alpha, true)
+                                .GetScore();
+
+            if (search_score <= alpha)
             {
-                position.RevertMove();
-                continue;
+                full_search = false;
             }
         }
 
-        auto newScore = -NegaScout(position, ss + 1, local, shared, initialDepth, extendedDepth - 1, -b, -a, -colour,
-            distanceFromRoot + 1, true)
-                             .GetScore();
-        if (newScore > a && newScore < beta && seen_moves > 1)
+        // If the reduced depth search was skipped or failed high, we do a full depth zero width search
+        if (full_search && (!pv_node || seen_moves > 1))
         {
-            newScore = -NegaScout(position, ss + 1, local, shared, initialDepth, extendedDepth - 1, -beta, -a, -colour,
-                distanceFromRoot + 1, true)
-                            .GetScore();
+            search_score
+                = -NegaScout<SearchType::ZW>(position, ss + 1, local, shared, new_depth, -(alpha + 1), -alpha, true)
+                       .GetScore();
+        }
+
+        // If the ZW search was skipped or failed high, we do a full depth full width search
+        if (full_search && pv_node && (seen_moves == 1 || (search_score > alpha && search_score < beta)))
+        {
+            search_score = -NegaScout<SearchType::PV>(position, ss + 1, local, shared, new_depth, -beta, -alpha, true)
+                                .GetScore();
         }
 
         position.RevertMove();
 
-        UpdateScore(newScore, score, bestMove, move);
-        UpdateAlpha(score, a, move, ss);
+        UpdateScore(search_score, score, bestMove, move);
+        UpdateAlpha(score, alpha, move, ss);
 
         // avoid updating Killers or History when aborting the search
         // check for fail high cutoff
-        if (!local.aborting_search && a >= beta)
+        if (!local.aborting_search && alpha >= beta)
         {
             AddKiller(move, ss->killers);
-            AddHistory(gen, move, depthRemaining);
+            AddHistory(gen, move, depth);
             break;
         }
-
-        b = a + 1; // Set a new zero width window
     }
 
     // Checkmate or stalemate
     if (noLegalMoves)
     {
-        return TerminalScore(position.Board(), distanceFromRoot);
+        return TerminalScore(position.Board(), distance_from_root);
     }
 
-    score = std::min(score, MaxScore);
+    score = std::clamp(score, min_score, max_score);
 
-    // avoid adding scores to the TT when we are aborting the search
-    if (!local.aborting_search)
+    // avoid adding scores to the TT when we are aborting the search, or during a singular extension
+    if (!local.aborting_search && ss->singular_exclusion == Move::Uninitialized)
     {
-        AddScoreToTable(score, alpha, position.Board(), depthRemaining, distanceFromRoot, beta, bestMove);
+        AddScoreToTable(score, original_alpha, position.Board(), depth, distance_from_root, beta, bestMove);
     }
 
     return SearchResult(score, bestMove);
-}
-
-unsigned int ProbeTBRoot(const BoardState& board)
-{
-    // clang-format off
-    return tb_probe_root(board.GetWhitePieces(), board.GetBlackPieces(),
-        board.GetPieceBB<KING>(),
-        board.GetPieceBB<QUEEN>(),
-        board.GetPieceBB<ROOK>(),
-        board.GetPieceBB<BISHOP>(),
-        board.GetPieceBB<KNIGHT>(),
-        board.GetPieceBB<PAWN>(),
-        board.fifty_move_count,
-        board.en_passant <= SQ_H8 ? board.en_passant : 0,
-        board.stm == WHITE,
-        NULL);
-    // clang-format on
-}
-
-unsigned int ProbeTBSearch(const BoardState& board)
-{
-    // clang-format off
-    return tb_probe_wdl(board.GetWhitePieces(), board.GetBlackPieces(),
-        board.GetPieceBB<KING>(),
-        board.GetPieceBB<QUEEN>(),
-        board.GetPieceBB<ROOK>(),
-        board.GetPieceBB<BISHOP>(),
-        board.GetPieceBB<KNIGHT>(),
-        board.GetPieceBB<PAWN>(),
-        board.en_passant <= SQ_H8 ? board.en_passant : 0,
-        board.stm == WHITE);
-    // clang-format on
-}
-
-SearchResult UseSearchTBScore(unsigned int result, int distanceFromRoot)
-{
-    if (result == TB_LOSS)
-        return Score::tb_loss_in(distanceFromRoot);
-    else if (result == TB_BLESSED_LOSS)
-        return 0;
-    else if (result == TB_DRAW)
-        return 0;
-    else if (result == TB_CURSED_WIN)
-        return 0;
-    else if (result == TB_WIN)
-        return Score::tb_win_in(distanceFromRoot);
-    else
-        assert(0);
-}
-
-Move GetTBMove(unsigned int result)
-{
-    int flag = -1;
-
-    if (TB_GET_PROMOTES(result) == TB_PROMOTES_NONE)
-        flag = QUIET;
-    else if (TB_GET_PROMOTES(result) == TB_PROMOTES_KNIGHT)
-        flag = KNIGHT_PROMOTION;
-    else if (TB_GET_PROMOTES(result) == TB_PROMOTES_BISHOP)
-        flag = BISHOP_PROMOTION;
-    else if (TB_GET_PROMOTES(result) == TB_PROMOTES_ROOK)
-        flag = ROOK_PROMOTION;
-    else if (TB_GET_PROMOTES(result) == TB_PROMOTES_QUEEN)
-        flag = QUEEN_PROMOTION;
-    else
-        assert(0);
-
-    return Move(
-        static_cast<Square>(TB_GET_FROM(result)), static_cast<Square>(TB_GET_TO(result)), static_cast<MoveFlag>(flag));
 }
 
 void UpdateAlpha(Score score, Score& a, const Move& move, SearchStackState* ss)
@@ -600,22 +627,25 @@ void UpdatePV(Move move, SearchStackState* ss)
 {
     ss->pv.clear();
     ss->pv.emplace_back(move);
-    ss->pv.append((ss + 1)->pv.begin(), (ss + 1)->pv.end());
+    ss->pv.insert(ss->pv.end(), (ss + 1)->pv.begin(), (ss + 1)->pv.end());
 }
 
-bool UseTransposition(const TTEntry& entry, Score alpha, Score beta)
+bool UseTransposition(Score tt_score, EntryType cutoff, Score alpha, Score beta)
 {
-    if (entry.GetCutoff() == EntryType::EXACT)
+    if (cutoff == EntryType::EXACT)
+    {
         return true;
+    }
 
-    auto NewAlpha = alpha;
-    auto NewBeta = beta;
-
-    // aspiration windows and search instability lead to issues with shrinking the original window
-    UpdateBounds(entry, NewAlpha, NewBeta);
-
-    if (NewAlpha >= NewBeta)
+    if (cutoff == EntryType::LOWERBOUND && tt_score >= beta)
+    {
         return true;
+    }
+
+    if (cutoff == EntryType::UPPERBOUND && tt_score <= alpha)
+    {
+        return true;
+    }
 
     return false;
 }
@@ -635,22 +665,17 @@ int extension(const BoardState& board)
     return extension;
 }
 
-bool AllowedNull(bool allowedNull, const BoardState& board, Score beta, Score alpha, bool InCheck)
+bool AllowedNull(bool allowedNull, const BoardState& board, bool InCheck)
 {
     // avoid null move pruning in very late game positions due to zanauag issues.
     // Even with verification search e.g 8/6k1/8/8/8/8/1K6/Q7 w - - 0 1
-    return allowedNull && !InCheck && !IsPV(beta, alpha) && !IsEndGame(board) && GetBitCount(board.GetAllPieces()) >= 5;
+    return allowedNull && !InCheck && !IsEndGame(board) && GetBitCount(board.GetAllPieces()) >= 5;
 }
 
 bool IsEndGame(const BoardState& board)
 {
     return (
         board.GetPiecesColour(board.stm) == (board.GetPieceBB(KING, board.stm) | board.GetPieceBB(PAWN, board.stm)));
-}
-
-bool IsPV(Score beta, Score alpha)
-{
-    return beta != alpha + 1;
 }
 
 void AddScoreToTable(Score score, Score alphaOriginal, const BoardState& board, int depthRemaining,
@@ -667,19 +692,6 @@ void AddScoreToTable(Score score, Score alphaOriginal, const BoardState& board, 
             EntryType::EXACT);
 }
 
-void UpdateBounds(const TTEntry& entry, Score& alpha, Score& beta)
-{
-    if (entry.GetCutoff() == EntryType::LOWERBOUND)
-    {
-        alpha = std::max(alpha, entry.GetScore());
-    }
-
-    if (entry.GetCutoff() == EntryType::UPPERBOUND)
-    {
-        beta = std::min(beta, entry.GetScore());
-    }
-}
-
 Score TerminalScore(const BoardState& board, int distanceFromRoot)
 {
     if (IsInCheck(board))
@@ -692,26 +704,32 @@ Score TerminalScore(const BoardState& board, int distanceFromRoot)
     }
 }
 
+template <SearchType search_type>
 SearchResult Quiescence(GameState& position, SearchStackState* ss, SearchLocalState& local, SearchSharedState& shared,
-    unsigned int initialDepth, Score alpha, Score beta, int colour, unsigned int distanceFromRoot, int depthRemaining)
+    int depth, Score alpha, Score beta)
 {
+    static_assert(search_type != SearchType::ROOT);
+    assert((search_type == SearchType::PV) || (beta == alpha + 1));
+
+    const auto distance_from_root = ss->distance_from_root;
+
     // check if we should abort the search
-    if (should_abort_search(initialDepth, local, shared))
+    if (should_abort_search(local, shared))
     {
         return SCORE_UNDEFINED;
     }
 
-    local.sel_septh = std::max<int>(local.sel_septh, distanceFromRoot);
+    local.sel_septh = std::max<int>(local.sel_septh, distance_from_root);
     local.nodes.fetch_add(1, std::memory_order_relaxed);
 
-    if (distanceFromRoot >= MAX_DEPTH)
+    if (distance_from_root >= MAX_DEPTH)
         return 0; // Have we reached max depth?
     ss->pv.clear();
 
     if (DeadPosition(position.Board()))
         return 0; // Is this position a dead draw?
 
-    auto staticScore = EvaluatePositionNet(position, local.eval_cache) * colour;
+    auto staticScore = EvaluatePositionNet(position, local.eval_cache);
     if (staticScore >= beta)
         return staticScore;
     if (staticScore > alpha)
@@ -720,7 +738,7 @@ SearchResult Quiescence(GameState& position, SearchStackState* ss, SearchLocalSt
     Move bestmove = Move::Uninitialized;
     auto Score = staticScore;
 
-    StagedMoveGenerator gen(position, ss, local, distanceFromRoot, true);
+    StagedMoveGenerator gen(position, ss, local, Move::Uninitialized, true);
     Move move;
 
     while (gen.Next(move))
@@ -739,9 +757,7 @@ SearchResult Quiescence(GameState& position, SearchStackState* ss, SearchLocalSt
 
         ss->move = move;
         position.ApplyMove(move);
-        auto newScore = -Quiescence(position, ss + 1, local, shared, initialDepth, -beta, -alpha, -colour,
-            distanceFromRoot + 1, depthRemaining - 1)
-                             .GetScore();
+        auto newScore = -Quiescence<search_type>(position, ss + 1, local, shared, depth - 1, -beta, -alpha).GetScore();
         position.RevertMove();
 
         UpdateScore(newScore, Score, bestmove, move);
@@ -770,7 +786,7 @@ void AddHistory(const StagedMoveGenerator& gen, const Move& move, int depthRemai
     gen.AdjustHistory(move, depthRemaining * depthRemaining, -depthRemaining * depthRemaining);
 }
 
-bool should_abort_search(int initial_depth, SearchLocalState& local, const SearchSharedState& shared)
+bool should_abort_search(SearchLocalState& local, const SearchSharedState& shared)
 {
     // If we are currently in the process of aborting, do so as quickly as possible
     if (local.aborting_search)
@@ -780,21 +796,22 @@ bool should_abort_search(int initial_depth, SearchLocalState& local, const Searc
 
     // See if we should abort the search. We get this signal if all threads have decided they want to stop, or we
     // receive a 'stop' command from the uci input
-    if (initial_depth > 1 && !KeepSearching)
+    if (local.search_depth > 1 && !KeepSearching)
     {
         local.aborting_search = true;
         return true;
     }
 
     // Check if we have breached the time limit.
-    if (initial_depth > 1 && local.nodes.load(std::memory_order_relaxed) % 1024 == 0 && shared.limits.HitTimeLimit())
+    if (local.search_depth > 1 && local.nodes.load(std::memory_order_relaxed) % 1024 == 0
+        && shared.limits.HitTimeLimit())
     {
         local.aborting_search = true;
         return true;
     }
 
     // If the current depth has been completed by another thread, we abort and resume at the higher depth
-    if (shared.has_completed_depth(initial_depth))
+    if (shared.has_completed_depth(local.search_depth))
     {
         local.aborting_search = true;
         return true;

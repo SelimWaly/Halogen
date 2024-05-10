@@ -13,12 +13,12 @@
 
 #include "Benchmark.h"
 #include "BitBoardDefine.h"
+#include "EGTB.h"
 #include "GameState.h"
 #include "Move.h"
 #include "MoveGeneration.h"
 #include "MoveList.h"
 #include "Network.h"
-#include "Pyrrhic/tbprobe.h"
 #include "Search.h"
 #include "SearchData.h"
 #include "SearchLimits.h"
@@ -31,14 +31,13 @@ void PerftSuite(std::string path, int depth_reduce, bool check_legality);
 void PrintVersion();
 uint64_t PerftDivide(unsigned int depth, GameState& position, bool chess960, bool check_legality);
 uint64_t Perft(unsigned int depth, GameState& position, bool check_legality);
-void Bench(int depth = 14);
+void Bench(int depth = 10);
 
-string version = "11.5.5";
+string version = "11.15.1";
 
 int main(int argc, char* argv[])
 {
     PrintVersion();
-    tb_init("<empty>");
 
     Network::Init();
 
@@ -125,6 +124,9 @@ int main(int argc, char* argv[])
 
         else if (token == "go")
         {
+            if (searchThread.joinable())
+                searchThread.join();
+
             shared->limits = {};
 
             // The amount of time we leave on the clock for safety
@@ -215,9 +217,6 @@ int main(int argc, char* argv[])
                 }
             }
 
-            if (searchThread.joinable())
-                searchThread.join();
-
             searchThread = thread([position, &shared]() mutable { SearchThread(position, *shared); });
         }
 
@@ -263,8 +262,7 @@ int main(int argc, char* argv[])
             {
                 iss >> token; //'value'
                 iss >> token;
-
-                tb_init(token.c_str());
+                Syzygy::init(token.c_str());
             }
 
             else if (token == "MultiPV")
@@ -567,8 +565,6 @@ void Bench(int depth)
             break;
         }
 
-        tTable.ResetTable();
-        data.ResetNewGame();
         data.limits.ResetTimer();
         SearchThread(position, data);
         nodeCount += data.nodes();
