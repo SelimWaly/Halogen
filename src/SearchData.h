@@ -70,7 +70,8 @@ public:
     SearchStack search_stack;
 
     EvalCacheTable eval_cache;
-    History history;
+    QuietHistory quiet_history;
+    LoudHistory loud_history;
 
     std::atomic<uint64_t> tb_hits = 0;
     std::atomic<uint64_t> nodes = 0;

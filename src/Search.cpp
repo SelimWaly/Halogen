@@ -505,7 +505,8 @@ SearchResult NegaScout(GameState& position, SearchStackState* ss, SearchLocalSta
             }
         }
 
-        int history = local.history.get(position, ss, move);
+        int history = (move.IsCapture() || move.IsPromotion()) ? local.loud_history.get(position, ss, move)
+                                                               : local.quiet_history.get(position, ss, move);
 
         ss->move = move;
         position.ApplyMove(move);
@@ -799,7 +800,7 @@ void AddKiller(Move move, std::array<Move, 2>& killers)
 
 void AddHistory(const StagedMoveGenerator& gen, const Move& move, int depthRemaining)
 {
-    if (depthRemaining > 20 || move.IsCapture() || move.IsPromotion())
+    if (depthRemaining > 20)
         return;
     gen.AdjustHistory(move, depthRemaining * depthRemaining, -depthRemaining * depthRemaining);
 }

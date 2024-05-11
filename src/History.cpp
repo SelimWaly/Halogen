@@ -24,24 +24,17 @@ int16_t* CountermoveHistory::get(const GameState& position, const SearchStackSta
     return &table[stm][counter_piece][counter.GetTo()][curr_piece][move.GetTo()];
 }
 
-void History::reset()
+int16_t* CaptureHistory::get(const GameState& position, const SearchStackState*, Move move)
 {
-    std::apply([](auto&... table) { (table.reset(), ...); }, tables_);
-}
-
-int History::get(const GameState& position, const SearchStackState* ss, Move move)
-{
-    auto get_value = [&](auto& table)
+    if (!move.IsCapture())
     {
-        auto* value = table.get(position, ss, move);
-        return value ? *value : 0;
-    };
+        return nullptr;
+    }
 
-    return std::apply([&](auto&... table) { return (get_value(table) + ...); }, tables_)
-        / std::tuple_size_v<decltype(tables_)>;
-}
+    const auto& stm = position.Board().stm;
+    const auto curr_piece = GetPieceType(position.Board().GetSquare(move.GetFrom()));
+    const auto capture_piece
+        = move.GetFlag() == EN_PASSANT ? PAWN : GetPieceType(position.Board().GetSquare(move.GetTo()));
 
-void History::add(const GameState& position, const SearchStackState* ss, Move move, int change)
-{
-    std::apply([&](auto&... table) { (table.add(position, ss, move, change), ...); }, tables_);
+    return &table[stm][curr_piece][move.GetTo()][capture_piece];
 }

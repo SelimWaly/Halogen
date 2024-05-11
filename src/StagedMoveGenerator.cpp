@@ -131,14 +131,29 @@ bool StagedMoveGenerator::Next(Move& move)
 
 void StagedMoveGenerator::AdjustHistory(const Move& move, int positive_adjustment, int negative_adjustment) const
 {
-    local.history.add(position, ss, move, positive_adjustment);
-
-    for (auto const& m : quietMoves)
+    if (move.IsCapture() || move.IsPromotion())
     {
-        if (m.move == move)
-            break;
+        local.loud_history.add(position, ss, move, positive_adjustment);
 
-        local.history.add(position, ss, m.move, negative_adjustment);
+        for (auto const& m : loudMoves)
+        {
+            if (m.move == move)
+                break;
+
+            local.loud_history.add(position, ss, m.move, negative_adjustment);
+        }
+    }
+    else
+    {
+        local.quiet_history.add(position, ss, move, positive_adjustment);
+
+        for (auto const& m : quietMoves)
+        {
+            if (m.move == move)
+                break;
+
+            local.quiet_history.add(position, ss, m.move, negative_adjustment);
+        }
     }
 }
 
@@ -294,7 +309,7 @@ void StagedMoveGenerator::OrderMoves(ExtendedMoveList& moves)
         // Quiet
         else
         {
-            int history = local.history.get(position, ss, moves[i].move);
+            int history = local.quiet_history.get(position, ss, moves[i].move);
             moves[i].score = std::clamp<int>(history, std::numeric_limits<decltype(moves[i].score)>::min(),
                 std::numeric_limits<decltype(moves[i].score)>::max());
         }
