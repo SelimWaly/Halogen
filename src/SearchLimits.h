@@ -25,7 +25,7 @@ public:
     bool HitNodeLimit(int nodes) const;
 
     // Returns true if more than half of the allocated time is remaining
-    bool ShouldContinueSearch() const;
+    bool ShouldContinueSearch(float search_time_adjustment) const;
 
     void SetTimeLimits(int soft_limit, int hard_limit);
     void SetDepthLimit(int depth);

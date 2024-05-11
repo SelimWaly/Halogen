@@ -76,6 +76,7 @@ public:
     std::atomic<uint64_t> nodes = 0;
     int sel_septh = 0;
     int search_depth = 0;
+    float allocated_time_adjustment = 1.0;
 
     // If we don't think we can complete the next depth within the iterative deepening loop before running out of time,
     // we want to stop the search early and save the leftover time. When multiple threads are involved, we don't want

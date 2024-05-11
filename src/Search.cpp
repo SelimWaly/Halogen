@@ -154,7 +154,7 @@ void SearchPosition(GameState& position, SearchSharedState& shared, unsigned int
             return;
         }
 
-        if (!shared.limits.ShouldContinueSearch())
+        if (!shared.limits.ShouldContinueSearch(local.allocated_time_adjustment))
         {
             shared.report_thread_wants_to_stop(thread_id);
         }
@@ -451,6 +451,24 @@ SearchResult NegaScout(GameState& position, SearchStackState* ss, SearchLocalSta
         }
 
         int extensions = 0;
+
+        // Root singular move time reduction.
+        //
+        // If at the root we have a singular move which is significantly better than any alternative, we reduce the
+        // allocated search time
+        if (root_node && ss->singular_exclusion == Move::Uninitialized && tt_move == move)
+        {
+            Score sbeta = tt_score - depth * 2;
+            int sdepth = depth / 2;
+            ss->singular_exclusion = move;
+            auto result = NegaScout<SearchType::ZW>(position, ss, local, shared, sdepth, sbeta - 1, sbeta, true);
+            ss->singular_exclusion = Move::Uninitialized;
+
+            if (result.GetScore() < sbeta)
+            {
+                local.allocated_time_adjustment = std::pow(0.9, depth);
+            }
+        }
 
         // Singular extensions.
         //

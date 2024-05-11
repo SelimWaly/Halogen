@@ -43,7 +43,7 @@ class iTimeChecker
 public:
     virtual ~iTimeChecker() = default;
     virtual bool HitTimeLimit(const SearchTimeManage&) const = 0;
-    virtual bool ShouldContinueSearch(const SearchTimeManage&) const = 0;
+    virtual bool ShouldContinueSearch(const SearchTimeManage&, float search_time_adjustment) const = 0;
 };
 
 class NullTimeChecker : public iTimeChecker
@@ -53,7 +53,7 @@ public:
     {
         return false;
     }
-    bool ShouldContinueSearch(const SearchTimeManage&) const override
+    bool ShouldContinueSearch(const SearchTimeManage&, float) const override
     {
         return true;
     };
@@ -66,9 +66,9 @@ public:
     {
         return timer.AbortSearch();
     }
-    bool ShouldContinueSearch(const SearchTimeManage& timer) const override
+    bool ShouldContinueSearch(const SearchTimeManage& timer, float search_time_adjustment) const override
     {
-        return timer.ContinueSearch();
+        return timer.ContinueSearch(search_time_adjustment);
     };
 };
 
@@ -174,9 +174,9 @@ bool SearchLimits::HitNodeLimit(int nodes) const
     return nodeLimit->HitNodeLimit(nodes);
 }
 
-bool SearchLimits::ShouldContinueSearch() const
+bool SearchLimits::ShouldContinueSearch(float search_time_adjustment) const
 {
-    return timeLimit->ShouldContinueSearch(timeManager);
+    return timeLimit->ShouldContinueSearch(timeManager, search_time_adjustment);
 }
 
 void SearchLimits::SetInfinite()

@@ -11,7 +11,7 @@ SearchTimeManage::SearchTimeManage(int soft_limit, int hard_limit)
 {
 }
 
-bool SearchTimeManage::ContinueSearch() const
+bool SearchTimeManage::ContinueSearch(float search_time_adjustment) const
 {
     // if AllocatedSearchTimeMS == MaxTimeMS then we have recieved a 'go movetime X' command and we should not abort
     // search early
@@ -22,7 +22,7 @@ bool SearchTimeManage::ContinueSearch() const
 
     auto elapsed_ms = timer.ElapsedMs();
 
-    return (elapsed_ms < soft_limit_ / 2 && elapsed_ms < hard_limit_);
+    return (elapsed_ms < (soft_limit_ * search_time_adjustment) / 2 && elapsed_ms < hard_limit_);
 }
 
 bool SearchTimeManage::AbortSearch() const

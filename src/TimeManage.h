@@ -56,7 +56,7 @@ class SearchTimeManage
 public:
     SearchTimeManage(int soft_limit, int hard_limit);
 
-    bool ContinueSearch() const;
+    bool ContinueSearch(float search_time_adjustment) const;
     bool AbortSearch() const; // Is the remaining time all used up?
 
     int ElapsedMs() const

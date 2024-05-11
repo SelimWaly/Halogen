@@ -68,6 +68,7 @@ void SearchLocalState::ResetNewSearch()
     nodes = 0;
     sel_septh = 0;
     search_depth = 0;
+    allocated_time_adjustment = 1.0;
     thread_wants_to_stop = false;
     aborting_search = false;
     root_move_blacklist = {};
