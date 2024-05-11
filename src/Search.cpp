@@ -458,7 +458,7 @@ SearchResult NegaScout(GameState& position, SearchStackState* ss, SearchLocalSta
         // allocated search time
         if (root_node && ss->singular_exclusion == Move::Uninitialized && tt_move == move)
         {
-            Score sbeta = tt_score - depth * 4;
+            Score sbeta = tt_score - depth * 10;
             int sdepth = depth / 2;
             ss->singular_exclusion = move;
             auto result = NegaScout<SearchType::ZW>(position, ss, local, shared, sdepth, sbeta - 1, sbeta, true);
