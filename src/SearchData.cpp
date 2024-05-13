@@ -103,11 +103,24 @@ void SearchSharedState::report_search_result(int thread_id, GameState& position,
         type,
     };
 
-    // Update the best search result. We want to pick the highest depth result, and using the higher score for
-    // tie-breaks. It adds elo to also include LOWER_BOUND search results as potential best result candidates.
-    if ((result_data.type == SearchResultType::EXACT || result_data.type == SearchResultType::LOWER_BOUND)
-        && (!best_search_result_ || (best_search_result_->depth < result_data.depth)
-            || (best_search_result_->depth == result_data.depth && best_search_result_->score < result_data.score)))
+    // Update the best search result. We want to pick the highest depth result, using the higher score for tie-breaks.
+    // It adds elo to also include LOWER_BOUND search results as potential best result candidates, but we shouldn't
+    // allow a LOWER_BOUND result to overwrite an equal depth EXACT result.
+    if (!best_search_result_)
+    {
+        best_search_result_ = &result_data;
+    }
+    // pick a higher depth result
+    else if ((result_data.type == SearchResultType::EXACT || result_data.type == SearchResultType::LOWER_BOUND)
+        && result_data.depth > best_search_result_->depth)
+    {
+        best_search_result_ = &result_data;
+    }
+    // or pick a equal depth better score result
+    else if ((result_data.type == SearchResultType::EXACT
+                 || (result_data.type == SearchResultType::LOWER_BOUND
+                     && best_search_result_->type != SearchResultType::EXACT))
+        && result_data.depth == best_search_result_->depth && result_data.score > best_search_result_->score)
     {
         best_search_result_ = &result_data;
     }
