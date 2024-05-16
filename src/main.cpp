@@ -4,7 +4,11 @@
 #include <chrono>
 #include <cstdint>
 #include <fstream>
+#include <iomanip>
 #include <iostream>
+#include <iterator>
+#include <numeric>
+#include <random>
 #include <sstream>
 #include <string>
 #include <thread>
@@ -13,12 +17,14 @@
 
 #include "Benchmark.h"
 #include "BitBoardDefine.h"
+#include "BoardState.h"
 #include "EGTB.h"
 #include "GameState.h"
 #include "Move.h"
 #include "MoveGeneration.h"
 #include "MoveList.h"
 #include "Network.h"
+#include "Pyrrhic/tbprobe.h"
 #include "Search.h"
 #include "SearchData.h"
 #include "SearchLimits.h"
@@ -34,6 +40,214 @@ uint64_t Perft(unsigned int depth, GameState& position, bool check_legality);
 void Bench(int depth = 10);
 
 string version = "11.18.2";
+
+GameState generate_random_KNBvK()
+{
+    static std::random_device rd;
+    static std::mt19937 g(rd());
+
+    while (true)
+    {
+        // generate a random KNBvK position
+        std::vector<Square> squares(N_SQUARES);
+        std::iota(squares.begin(), squares.end(), SQ_A1);
+        std::shuffle(squares.begin(), squares.end(), g);
+        GameState position;
+        position.InitialiseFromFen("8/8/8/8/8/8/8/8 w - - 0 1");
+        position.MutableBoard().SetSquare(squares[0], WHITE_KING);
+        position.MutableBoard().SetSquare(squares[1], WHITE_KNIGHT);
+        position.MutableBoard().SetSquare(squares[2], WHITE_BISHOP);
+        position.MutableBoard().SetSquare(squares[3], BLACK_KING);
+
+        // random STM
+        std::bernoulli_distribution turn;
+        position.MutableBoard().stm = turn(g) == true ? WHITE : BLACK;
+
+        // random 50-move count
+        std::uniform_int_distribution fifty_move(0, 99);
+        position.MutableBoard().fifty_move_count = fifty_move(g);
+
+        // check the other side is not in check
+        if (IsInCheck(position.Board(), !position.Board().stm))
+        {
+            continue;
+        }
+
+        // check for stalemate or checkmate
+        BasicMoveList legal_moves;
+        LegalMoves(position.Board(), legal_moves);
+        if (legal_moves.size() == 0)
+        {
+            continue;
+        }
+
+        return position;
+    }
+}
+
+uint32_t tb_probe_root(const BoardState& board, uint32_t* results)
+{
+    auto probe = tb_probe_root(board.GetPieces<WHITE>(), board.GetPieces<BLACK>(), board.GetPieceBB<KING>(),
+        board.GetPieceBB<QUEEN>(), board.GetPieceBB<ROOK>(), board.GetPieceBB<BISHOP>(), board.GetPieceBB<KNIGHT>(),
+        board.GetPieceBB<PAWN>(), board.fifty_move_count, board.en_passant <= SQ_H8 ? board.en_passant : 0,
+        board.stm == WHITE, results);
+
+    if (probe == TB_RESULT_FAILED || probe == TB_RESULT_STALEMATE || probe == TB_RESULT_CHECKMATE)
+    {
+        std::cout << "Failed TB probe for position\n";
+        board.Print();
+    }
+
+    return probe;
+}
+
+Move extract_tb_move(const BoardState& board, uint32_t probe)
+{
+    const auto from = static_cast<Square>(TB_GET_FROM(probe));
+    const auto to = static_cast<Square>(TB_GET_TO(probe));
+    const auto flag = [&]()
+    {
+        auto flag_without_promo = board.GetMoveFlag(from, to);
+        const auto promo = TB_GET_PROMOTES(probe);
+
+        if (promo == PYRRHIC_PROMOTES_KNIGHT)
+        {
+            return (flag_without_promo == CAPTURE ? KNIGHT_PROMOTION_CAPTURE : KNIGHT_PROMOTION);
+        }
+        if (promo == PYRRHIC_PROMOTES_BISHOP)
+        {
+            return (flag_without_promo == CAPTURE ? BISHOP_PROMOTION_CAPTURE : BISHOP_PROMOTION);
+        }
+        if (promo == PYRRHIC_PROMOTES_ROOK)
+        {
+            return (flag_without_promo == CAPTURE ? ROOK_PROMOTION_CAPTURE : ROOK_PROMOTION);
+        }
+        if (promo == PYRRHIC_PROMOTES_QUEEN)
+        {
+            return (flag_without_promo == CAPTURE ? QUEEN_PROMOTION_CAPTURE : QUEEN_PROMOTION);
+        }
+
+        return flag_without_promo;
+    }();
+
+    return Move(from, to, flag);
+}
+
+enum game_result
+{
+    LOSS,
+    DRAW,
+    WIN,
+};
+
+int playout_game(GameState position)
+{
+    auto perspective = position.Board().stm;
+
+    while (true)
+    {
+        // check for stalemate or checkmate, or fifty move
+        BasicMoveList legal_moves;
+        LegalMoves(position.Board(), legal_moves);
+        if (legal_moves.size() == 0)
+        {
+            if (IsInCheck(position.Board()))
+            {
+                return perspective == position.Board().stm ? LOSS : WIN;
+            }
+            else
+            {
+                return DRAW;
+            }
+        }
+        else if (position.Board().fifty_move_count >= 100)
+        {
+            return DRAW;
+        }
+
+        auto probe = tb_probe_root(position.Board(), nullptr);
+        auto move = extract_tb_move(position.Board(), probe);
+        position.ApplyMove(move);
+    }
+}
+
+void tb_probe_root_analysis()
+{
+    size_t iterations = 0;
+    std::array<std::array<size_t, 3>, 5> wdl_transitions = {};
+    std::array<std::string_view, 5> labels_y = { "TB_LOSS", "TB_BLESSED_LOSS", "TB_DRAW", "TB_CURSED_WIN", "TB_WIN" };
+    std::array<std::string_view, 3> labels_x = { "LOSS", "DRAW", "WIN" };
+
+    auto print_info = [&]()
+    {
+        std::cout << setw(20) << "\\";
+        for (int i = 0; i < 3; i++)
+        {
+            std::cout << setw(20) << labels_x[i];
+        }
+        std::cout << "\n";
+        for (int i = 0; i < 5; i++)
+        {
+            std::cout << setw(20) << labels_y[i];
+            for (int j = 0; j < 3; j++)
+            {
+                std::cout << setw(20) << wdl_transitions[i][j];
+            }
+            std::cout << "\n";
+        }
+        std::cout << "iterations: " << iterations << "\n";
+    };
+
+    while (true)
+    {
+        auto position = generate_random_KNBvK();
+
+        // probe this position using tb_probe_root
+        uint32_t move_results[256];
+        auto probe = tb_probe_root(position.Board(), move_results);
+        (void)(probe);
+
+        // for each legal move, compare the WDL assigned in move_results with the actual WDL that results from playing
+        // out the rest of the game, only applying the best move at each step
+        BasicMoveList legal_moves;
+        LegalMoves(position.Board(), legal_moves);
+
+        for (int i = 0; i < 256 && move_results[i] != TB_RESULT_FAILED; i++)
+        {
+            auto move = extract_tb_move(position.Board(), move_results[i]);
+            auto it = std::find(legal_moves.begin(), legal_moves.end(), move);
+            if (it == legal_moves.end())
+            {
+                std::cout << "Could not find matching move for probe: " << move_results[i];
+                position.Board().Print();
+                continue;
+            }
+
+            legal_moves.erase(it);
+            int initial_wdl = TB_GET_WDL(move_results[i]);
+            position.ApplyMove(move);
+            int eventual_result = playout_game(position);
+            position.RevertMove();
+            // reverse the perspective
+            eventual_result = 2 - eventual_result;
+
+            // add the stats to the matrix
+            wdl_transitions[initial_wdl][eventual_result]++;
+            iterations++;
+
+            if ((iterations % (1)) == 0)
+            {
+                print_info();
+            }
+        }
+
+        if (!legal_moves.empty())
+        {
+            std::cout << "Didn't exhaust all possible moves";
+            position.Board().Print();
+        }
+    }
+}
 
 int main(int argc, char* argv[])
 {
@@ -316,6 +530,9 @@ int main(int argc, char* argv[])
 
             if (token == "perft960_legality")
                 PerftSuite("test/perft960.txt", 3, true);
+
+            if (token == "tb_probe_root")
+                tb_probe_root_analysis();
         }
 
         else if (token == "stop")

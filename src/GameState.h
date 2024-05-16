@@ -43,9 +43,9 @@ public:
 
     const BoardState& Board() const;
 
-private:
     BoardState& MutableBoard();
 
+private:
     Network net;
 
     std::vector<BoardState> previousStates;
