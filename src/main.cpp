@@ -18,12 +18,14 @@
 #include "Move.h"
 #include "MoveGeneration.h"
 #include "MoveList.h"
-#include "Network.h"
 #include "Search.h"
 #include "SearchData.h"
 #include "SearchLimits.h"
 #include "TimeManager.h"
 #include "TranspositionTable.h"
+#include "tree-strap/HalogenNetwork.h"
+#include "tree-strap/TrainableNetwork.h"
+#include "tree-strap/tree-strap-learn.h"
 
 using namespace ::std;
 
@@ -35,11 +37,11 @@ void Bench(int depth = 10);
 
 string version = "11.20.0";
 
+string tree_strap_version = "tree_strap_learn_0.0.1";
+
 int main(int argc, char* argv[])
 {
     PrintVersion();
-
-    Network::Init();
 
     string Line; // to read the command given by the GUI
 
@@ -69,7 +71,7 @@ int main(int argc, char* argv[])
 
         if (token == "uci")
         {
-            cout << "id name Halogen " << version << endl;
+            cout << "id name Halogen " << version << " " << tree_strap_version << endl;
             cout << "id author Kieren Pearson" << endl;
             cout << "option name Clear Hash type button" << endl;
             cout << "option name Hash type spin default 32 min 1 max 262144" << endl;
@@ -348,6 +350,25 @@ int main(int argc, char* argv[])
                 Bench();
         }
 
+        else if (token == "learn")
+        {
+            iss >> token; // filename
+            std::string file = token;
+            iss >> token; // epoch
+            int epoch = stoi(token);
+            iss >> token; // SyzygyPath
+            Syzygy::init(token.c_str());
+            iss >> token; // opening_book
+            std::string opening_book = token;
+            learn(file, epoch, opening_book);
+        }
+
+        else if (token == "load_weights")
+        {
+            iss >> token;
+            TrainableNetwork::LoadWeights(token);
+        }
+
         // Non uci commands
         else if (token == "print")
             cout << position.Board();
@@ -368,7 +389,7 @@ int main(int argc, char* argv[])
 
 void PrintVersion()
 {
-    cout << "Halogen " << version;
+    cout << "Halogen " << version << " " << tree_strap_version;
 
 #if defined(_WIN64) or defined(__x86_64__)
     cout << " x64";

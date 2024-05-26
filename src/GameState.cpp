@@ -138,6 +138,11 @@ Score GameState::GetEvaluation() const
     return net.Eval(Board().stm);
 }
 
+float GameState::GetFloatEvaluation() const
+{
+    return net.FloatEval(Board().stm);
+}
+
 bool GameState::CheckForRep(int distanceFromRoot, int maxReps) const
 {
     int totalRep = 1;
