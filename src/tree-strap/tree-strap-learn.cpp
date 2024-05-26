@@ -1,12 +1,12 @@
+#include <atomic>
 #include <chrono>
-#include <cmath>
 #include <fstream>
 #include <iostream>
-#include <math.h>
 #include <random>
 #include <string>
 #include <thread>
 
+#include "../EGTB.h"
 #include "../EvalNet.h"
 #include "../GameState.h"
 #include "../MoveGeneration.h"
@@ -20,6 +20,7 @@ void SelfPlayGame(TrainableNetwork& network, SearchSharedState& data, const std:
 void PrintNetworkDiagnostics(TrainableNetwork& network);
 void ExtractGradientsFromTT(
     TrainableNetwork& network, GameState& position, BasicMoveList& line, int distance_from_root);
+Score syzygy_rescoring(Score tt_score, BoardState& board);
 
 std::string weight_file_name(int epoch, int game);
 std::vector<std::string> parse_opening_book(std::string_view path);
@@ -188,6 +189,8 @@ void SelfPlayGame(TrainableNetwork& network, SearchSharedState& data, const std:
     {
         int turns = 0;
         position.InitialiseFromFen(opening);
+        // TODO: fix
+        break;
 
         // play out 10 random moves
         while (turns < 10)
@@ -279,6 +282,8 @@ void SelfPlayGame(TrainableNetwork& network, SearchSharedState& data, const std:
 
         position.ApplyMove(data.get_best_search_result().best_move);
         search_count++;
+
+        // std::cout << position.Board() << std::endl;
     }
 }
 
@@ -328,26 +333,40 @@ void ExtractGradientsFromTT(TrainableNetwork& network, GameState& position, Basi
     const auto tt_score = convert_from_tt_score(tt_entry->score.load(std::memory_order_relaxed), distance_from_root);
     const auto tt_depth = tt_entry->depth.load(std::memory_order_relaxed);
     const auto tt_cutoff = tt_entry->cutoff.load(std::memory_order_relaxed);
+    const auto tt_move = tt_entry->move.load(std::memory_order_relaxed);
+
+    // erase this entry as we have used it
+    tt_entry->key = {};
 
     if (tt_depth < min_learning_depth)
     {
         return;
     }
 
+    if (tt_move.IsCapture() || tt_move.IsPromotion())
+    {
+        return;
+    }
+
     total_node_count++;
     const auto eval = position.GetEvaluation();
+    const auto target_score = syzygy_rescoring(tt_score, position.MutableBoard());
 
     if ((tt_cutoff == SearchResultType::LOWER_BOUND && tt_score > eval)
-        || (tt_cutoff == SearchResultType::UPPER_BOUND && tt_score < eval) || (tt_cutoff == SearchResultType::EXACT))
+        || (tt_cutoff == SearchResultType::UPPER_BOUND && tt_score < eval) || (tt_cutoff == SearchResultType::EXACT)
+        || (target_score != tt_score))
     {
-        // no sigmoid activation, gradient is just -(target - actual)
-        double loss_gradient = -(tt_score - eval).value();
+        // Differing from the paper, we compute the error as the squared difference of the values after a sigmoid is
+        // applied. This puts more emphesis on incorrect evals close to even positions, and less on evals where one side
+        // is winning.
+        //
+        // loss = (sigmoid(eval) - sigmoid(tt_score)) ^ 2
+        // hence dl/d_eval = 2 * k * s(eval) * (1-s(eval)) * (s(eval) - s(target_score))
+        double loss_gradient
+            = 2 * sigmoid_prime(eval.value()) * (sigmoid(eval.value()) - sigmoid(target_score.value()));
         network.UpdateGradients(loss_gradient, network.GetSparseInputs(position.Board()), position.Board().stm);
         learning_node_count++;
     }
-
-    // erase this entry as we have used it
-    tt_entry->key = {};
 
     // recursive iteration through tree
     BasicMoveList legal_moves;
@@ -368,4 +387,17 @@ void ExtractGradientsFromTT(TrainableNetwork& network, GameState& position, Basi
         line.pop_back();
         position.RevertMove();
     }
+}
+
+Score syzygy_rescoring(Score tt_score, BoardState& board)
+{
+    // for syzygy positions, rather than use the tt_score we use the egtb score instead. This gives a more accurate
+    // oracle for the network to approximate. The network doesn't care about the 50 move rule, so we set it to zero to
+    // ensure we get a wdl probe result
+
+    auto tmp = std::exchange(board.fifty_move_count, 0);
+    auto result = Syzygy::probe_wdl_search(board, 0).value_or(tt_score);
+    board.fifty_move_count = tmp;
+
+    return result;
 }

@@ -44,10 +44,9 @@ public:
     bool CheckForRep(int distanceFromRoot, int maxReps) const;
 
     const BoardState& Board() const;
-
-private:
     BoardState& MutableBoard();
 
+private:
     HalogenNetwork net;
 
     std::vector<BoardState> previousStates;

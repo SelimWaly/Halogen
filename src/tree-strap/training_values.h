@@ -6,8 +6,8 @@
 
 inline float learning_rate_schedule(float)
 {
-    // TreeStrap(alpha-beta) suggests 5e-7 LR.
-    static constexpr float initial_lr = 5e-7;
+    // TreeStrap(alpha-beta) suggests 5e-7 LR, with SGD. We use ADAM, and can increase the LR by a little
+    static constexpr float initial_lr = 5e-5;
     return initial_lr;
 }
 
@@ -16,9 +16,18 @@ inline float lr_alpha = learning_rate_schedule(0);
 
 inline constexpr double training_time_hours = 24;
 
+inline constexpr double sigmoid_coeff = 2.5 / 400;
+
 inline float sigmoid(float x)
 {
-    return 1.0f / (1.0f + exp(2.5 / 400 * -x));
+    return 1.0f / (1.0f + exp(sigmoid_coeff * -x));
+}
+
+inline float sigmoid_prime(float x)
+{
+    // note derivative of sigmoid s(v) with coefficent k is k*(s(v))*(1-s(v))
+    auto s = sigmoid(x);
+    return sigmoid_coeff * s * (1 - s);
 }
 
 inline constexpr auto training_threads = 1;
