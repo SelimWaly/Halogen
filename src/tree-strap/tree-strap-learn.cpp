@@ -349,7 +349,7 @@ void ExtractGradientsFromTT(TrainableNetwork& network, GameState& position, Basi
     }
 
     total_node_count++;
-    const auto eval = position.GetEvaluation();
+    const auto eval = position.GetFloatEvaluation() * sigmoid_bias_correction;
     const auto target_score = syzygy_rescoring(tt_score, position.MutableBoard());
 
     if ((tt_cutoff == SearchResultType::LOWER_BOUND && tt_score > eval)
@@ -362,8 +362,7 @@ void ExtractGradientsFromTT(TrainableNetwork& network, GameState& position, Basi
         //
         // loss = (sigmoid(eval) - sigmoid(tt_score)) ^ 2
         // hence dl/d_eval = 2 * k * s(eval) * (1-s(eval)) * (s(eval) - s(target_score))
-        double loss_gradient
-            = 2 * sigmoid_prime(eval.value()) * (sigmoid(eval.value()) - sigmoid(target_score.value()));
+        double loss_gradient = 2 * sigmoid_prime(eval) * (sigmoid(eval) - sigmoid(target_score.value()));
         network.UpdateGradients(loss_gradient, network.GetSparseInputs(position.Board()), position.Board().stm);
         learning_node_count++;
     }

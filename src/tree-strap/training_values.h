@@ -41,6 +41,8 @@ inline constexpr auto min_learning_depth = 1;
 
 inline constexpr auto search_depth = 4;
 
+inline constexpr auto sigmoid_bias_correction = 0.999;
+
 // From the td-leaf experiments, there are various things to try for example
 // - Fixed nodes search vs fixed depth search
 // - multi-threading: issues with using TT?
