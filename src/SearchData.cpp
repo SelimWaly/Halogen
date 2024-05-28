@@ -239,6 +239,11 @@ void SearchSharedState::report_thread_wants_to_stop(int thread_id)
 void SearchSharedState::PrintSearchInfo(
     const GameState& position, const SearchLocalState& local, const SearchResults& data) const
 {
+    if (silent_mode)
+    {
+        return;
+    }
+
     std::scoped_lock lock(lock_);
 
     /*

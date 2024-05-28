@@ -5,8 +5,9 @@
 
 #include "BoardState.h"
 #include "Move.h"
-#include "Network.h"
+#include "Score.h"
 #include "Zobrist.h"
+#include "tree-strap/HalogenNetwork.h"
 
 /*
 This class holds all the data required to define a state in a chess game,
@@ -38,15 +39,15 @@ public:
     void Reset();
 
     Score GetEvaluation() const;
+    float GetFloatEvaluation() const;
 
     bool CheckForRep(int distanceFromRoot, int maxReps) const;
 
     const BoardState& Board() const;
-
-private:
     BoardState& MutableBoard();
 
-    Network net;
+private:
+    HalogenNetwork net;
 
     std::vector<BoardState> previousStates;
 };

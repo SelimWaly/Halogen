@@ -109,8 +109,8 @@ void SearchThread(GameState& position, SearchSharedState& shared)
     {
         auto& local = shared.get_local_state(i);
         local.root_move_whitelist = root_move_whitelist;
-        threads.emplace_back(
-            std::thread([position, &local, &shared]() mutable { SearchPosition(position, local, shared); }));
+        // Avoid creating redundant short lived threads
+        SearchPosition(position, local, shared);
     }
 
     for (size_t i = 0; i < threads.size(); i++)
@@ -118,9 +118,12 @@ void SearchThread(GameState& position, SearchSharedState& shared)
         threads[i].join();
     }
 
-    const auto& search_result = shared.get_best_search_result();
-    shared.PrintSearchInfo(position, shared.get_local_state(0), search_result);
-    std::cout << "bestmove " << search_result.best_move << std::endl;
+    if (!shared.silent_mode)
+    {
+        const auto& search_result = shared.get_best_search_result();
+        shared.PrintSearchInfo(position, shared.get_local_state(0), search_result);
+        std::cout << "bestmove " << search_result.best_move << std::endl;
+    }
 }
 
 void SearchPosition(GameState& position, SearchLocalState& local, SearchSharedState& shared)
