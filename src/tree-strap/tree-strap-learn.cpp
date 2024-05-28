@@ -189,8 +189,6 @@ void SelfPlayGame(TrainableNetwork& network, SearchSharedState& data, const std:
     {
         int turns = 0;
         position.InitialiseFromFen(opening);
-        // TODO: fix
-        break;
 
         // play out 10 random moves
         while (turns < 10)
